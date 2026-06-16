@@ -22,7 +22,8 @@ export default function ProductsPage() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch('http://localhost:3333/api/products');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+        const res = await fetch(`${apiUrl}/api/products`);
         if (!res.ok) throw new Error('Erro ao buscar produtos');
         const data = await res.json();
         setProducts(data);

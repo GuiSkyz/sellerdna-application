@@ -19,7 +19,8 @@ export default function ImportProductsPage() {
     setIsImporting(true);
     
     try {
-      const response = await fetch('http://localhost:3333/api/products/import', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const response = await fetch(`${apiUrl}/api/products/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products })
