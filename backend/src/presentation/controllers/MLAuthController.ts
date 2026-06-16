@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { MercadoLivreAuthService } from '../../infrastructure/integrations/mercadolivre/MercadoLivreAuthService';
+import { supabase } from '../../infrastructure/database/supabase';
 
 export class MLAuthController {
   private mlAuthService: MercadoLivreAuthService;
@@ -29,7 +30,30 @@ export class MLAuthController {
       // Troca o código temporário pelo token de acesso oficial
       const tokenData = await this.mlAuthService.exchangeCode(code);
       
-      // TODO: Salvar os tokens no Supabase associados ao usuário autenticado
+      // Salvar os tokens no Supabase associados ao usuário autenticado
+      // Como ainda não temos Auth real no Frontend, vamos pegar ou criar um usuário padrão
+      let { data: users } = await supabase.from('users').select('id').limit(1);
+      let userId = users?.[0]?.id;
+
+      if (!userId) {
+        const { data: newUser } = await supabase.from('users').insert({ 
+          email: 'test@sellerdna.com', 
+          name: 'Test User' 
+        }).select('id').single();
+        userId = newUser?.id;
+      }
+
+      if (userId) {
+        await supabase.from('mercado_livre_tokens').upsert({
+          user_id: userId,
+          ml_user_id: tokenData.user_id,
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+          expires_in: tokenData.expires_in,
+          scope: tokenData.scope,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      }
 
       // Após salvar, redirecionamos o usuário de volta para o painel do Frontend
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -60,8 +84,6 @@ export class MLAuthController {
 
   // Webhook para receber atualizações automáticas do ML (vendas, perguntas, etc)
   async notifications(request: FastifyRequest, reply: FastifyReply) {
-    // O ML exige que sempre retornemos 200 OK rapidamente para confirmar o recebimento
-    // Aqui no futuro vamos processar as notificações de estoque, vendas, etc.
     request.log.info({ notification: request.body }, 'Notificação recebida do Mercado Livre');
     return reply.status(200).send('OK');
   }

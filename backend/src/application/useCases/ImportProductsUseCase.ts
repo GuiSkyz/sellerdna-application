@@ -1,10 +1,10 @@
 import { ImportProductDTO } from '../dto/ProductDTO';
 import { Product } from '../../domain/entities/Product';
-import { InMemoryProductRepository } from '../../domain/repositories/InMemoryProductRepository';
+import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
 import { randomUUID } from 'crypto';
 
 export class ImportProductsUseCase {
-  constructor(private productRepository: InMemoryProductRepository) {}
+  constructor(private productRepository: SupabaseProductRepository) {}
 
   async execute(userId: string, productsDto: ImportProductDTO[]): Promise<Product[]> {
     const products: Product[] = productsDto.map(dto => ({

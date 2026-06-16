@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { ProductController } from '../controllers/ProductController';
 import { ImportProductsUseCase } from '../../application/useCases/ImportProductsUseCase';
-import { InMemoryProductRepository } from '../../domain/repositories/InMemoryProductRepository';
+import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
 
 export async function productRoutes(app: FastifyInstance) {
-  const repository = new InMemoryProductRepository();
+  const repository = new SupabaseProductRepository();
   const useCase = new ImportProductsUseCase(repository);
   const controller = new ProductController(useCase, repository);
 

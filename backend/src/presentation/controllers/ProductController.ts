@@ -1,18 +1,32 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { ImportProductsPayloadSchema } from '../../application/dto/ProductDTO';
 import { ImportProductsUseCase } from '../../application/useCases/ImportProductsUseCase';
-import { InMemoryProductRepository } from '../../domain/repositories/InMemoryProductRepository';
+import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
+import { supabase } from '../../infrastructure/database/supabase';
 
 export class ProductController {
   constructor(
     private importProductsUseCase: ImportProductsUseCase,
-    private productRepository: InMemoryProductRepository
+    private productRepository: SupabaseProductRepository
   ) {}
+
+  private async getUserId(): Promise<string> {
+    let { data: users } = await supabase.from('users').select('id').limit(1);
+    let userId = users?.[0]?.id;
+
+    if (!userId) {
+      const { data: newUser } = await supabase.from('users').insert({ 
+        email: 'test@sellerdna.com', 
+        name: 'Test User' 
+      }).select('id').single();
+      userId = newUser?.id;
+    }
+    return userId;
+  }
 
   async import(request: FastifyRequest, reply: FastifyReply) {
     try {
-      // Mocking user ID until Auth is implemented
-      const userId = '123e4567-e89b-12d3-a456-426614174000'; 
+      const userId = await this.getUserId();
 
       const parsed = ImportProductsPayloadSchema.safeParse(request.body);
       
@@ -37,8 +51,8 @@ export class ProductController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const userId = '123e4567-e89b-12d3-a456-426614174000'; 
-      const products = await this.productRepository.findAllByUserId(userId);
+      // O repositório lista tudo (depois filtraremos por userId quando tivermos Multi-tenant real)
+      const products = await this.productRepository.listAll();
       return reply.send(products);
     } catch (error) {
       request.log.error(error);
