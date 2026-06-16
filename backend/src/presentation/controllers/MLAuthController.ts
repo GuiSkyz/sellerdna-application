@@ -18,6 +18,31 @@ export class MLAuthController {
     }
   }
 
+  async callback(request: FastifyRequest<{ Querystring: { code: string } }>, reply: FastifyReply) {
+    try {
+      const { code } = request.query;
+      
+      if (!code) {
+        return reply.status(400).send({ error: 'O código de autorização não foi retornado pelo Mercado Livre' });
+      }
+
+      // Troca o código temporário pelo token de acesso oficial
+      const tokenData = await this.mlAuthService.exchangeCode(code);
+      
+      // TODO: Salvar os tokens no Supabase associados ao usuário autenticado
+
+      // Após salvar, redirecionamos o usuário de volta para o painel do Frontend
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return reply.redirect(`${frontendUrl}/settings?ml_connected=true`);
+      
+    } catch (error) {
+      request.log.error(error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return reply.redirect(`${frontendUrl}/settings?ml_connected=false&error=auth_failed`);
+    }
+  }
+
+  // Mantemos o exchangeToken antigo caso o Frontend precise fazer a troca via POST
   async exchangeToken(request: FastifyRequest<{ Body: { code: string } }>, reply: FastifyReply) {
     try {
       const { code } = request.body;
@@ -26,9 +51,6 @@ export class MLAuthController {
       }
 
       const tokenData = await this.mlAuthService.exchangeCode(code);
-      
-      // TODO: Salvar os tokens no Supabase associados ao usuário autenticado
-
       return reply.send({ message: 'Conta conectada com sucesso', tokens: tokenData });
     } catch (error) {
       request.log.error(error);
