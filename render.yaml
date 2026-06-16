@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: sellerdna-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
