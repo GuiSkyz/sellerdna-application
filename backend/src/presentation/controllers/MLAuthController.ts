@@ -57,4 +57,12 @@ export class MLAuthController {
       return reply.status(500).send({ error: 'Erro ao processar o token do Mercado Livre' });
     }
   }
+
+  // Webhook para receber atualizações automáticas do ML (vendas, perguntas, etc)
+  async notifications(request: FastifyRequest, reply: FastifyReply) {
+    // O ML exige que sempre retornemos 200 OK rapidamente para confirmar o recebimento
+    // Aqui no futuro vamos processar as notificações de estoque, vendas, etc.
+    request.log.info({ notification: request.body }, 'Notificação recebida do Mercado Livre');
+    return reply.status(200).send('OK');
+  }
 }
