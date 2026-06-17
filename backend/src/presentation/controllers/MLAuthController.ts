@@ -62,25 +62,56 @@ export class MLAuthController {
       }
 
       if (userId) {
-        // Upsert Account
-        const { data: accountData, error: accountError } = await supabase.from('mercadolivre_accounts').upsert({
-          user_id: userId,
-          ml_user_id: String(tokenData.user_id),
-          nickname: mlProfile.nickname || `User ${tokenData.user_id}`,
-          status: 'ACTIVE',
-        }, { onConflict: 'user_id,ml_user_id' }).select('id').single();
+        // Primeiro, tenta buscar a conta existente
+        const { data: existingAccounts, error: searchError } = await supabase
+          .from('mercadolivre_accounts')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('ml_user_id', String(tokenData.user_id));
 
-        if (accountError) throw accountError;
+        if (searchError) throw searchError;
 
-        // Upsert Token
+        let accountId: string;
+        if (existingAccounts && existingAccounts.length > 0) {
+          // Atualiza
+          accountId = existingAccounts[0].id;
+          await supabase.from('mercadolivre_accounts').update({
+            nickname: mlProfile.nickname || `User ${tokenData.user_id}`,
+            status: 'ACTIVE',
+          }).eq('id', accountId);
+        } else {
+          // Insere
+          const { data: newAccount, error: insertError } = await supabase.from('mercadolivre_accounts').insert({
+            user_id: userId,
+            ml_user_id: String(tokenData.user_id),
+            nickname: mlProfile.nickname || `User ${tokenData.user_id}`,
+            status: 'ACTIVE',
+          }).select('id').single();
+
+          if (insertError) throw insertError;
+          accountId = newAccount.id;
+        }
+
+        // Upsert Token (Ainda usamos eq('account_id') se for update, ou insert se não existir)
         const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-        await supabase.from('mercadolivre_tokens').upsert({
-          account_id: accountData.id,
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: expiresAt,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'account_id' });
+        
+        const { data: existingTokens } = await supabase.from('mercadolivre_tokens').select('id').eq('account_id', accountId);
+        if (existingTokens && existingTokens.length > 0) {
+          await supabase.from('mercadolivre_tokens').update({
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_at: expiresAt,
+            updated_at: new Date().toISOString()
+          }).eq('account_id', accountId);
+        } else {
+          await supabase.from('mercadolivre_tokens').insert({
+            account_id: accountId,
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_at: expiresAt,
+            updated_at: new Date().toISOString()
+          });
+        }
       }
 
       // Após salvar, redirecionamos o usuário de volta para o painel do Frontend
