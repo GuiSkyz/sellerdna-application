@@ -9,7 +9,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Meus Produtos', href: '/products', icon: PackageSearch },
     { name: 'Importar Excel', href: '/products/import', icon: UploadCloud },
     { name: 'Anúncios do ML', href: '/listings', icon: Store },
