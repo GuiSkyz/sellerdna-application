@@ -118,10 +118,11 @@ export class MLAuthController {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       return reply.redirect(`${frontendUrl}/dashboard?ml_connected=true`);
       
-    } catch (error) {
+    } catch (error: any) {
       request.log.error(error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      return reply.redirect(`${frontendUrl}/dashboard?ml_connected=false&error=auth_failed`);
+      const errorMessage = encodeURIComponent(error.message || 'auth_failed');
+      return reply.redirect(`${frontendUrl}/dashboard?ml_connected=false&error=${errorMessage}`);
     }
   }
 

@@ -4,13 +4,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Store } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 export default function OnboardingPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      alert(`Falha na autenticação do Mercado Livre. O Backend encontrou um erro ao salvar sua conta:\n\n${decodeURIComponent(errorParam)}`);
+    }
     async function checkAccount() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
