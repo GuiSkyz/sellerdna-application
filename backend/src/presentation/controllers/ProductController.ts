@@ -3,11 +3,13 @@ import { ImportProductsPayloadSchema } from '../../application/dto/ProductDTO';
 import { ImportProductsUseCase } from '../../application/useCases/ImportProductsUseCase';
 import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
 import { supabase } from '../../infrastructure/database/supabase';
+import { OptimizeListingUseCase } from '../../application/useCases/OptimizeListingUseCase';
 
 export class ProductController {
   constructor(
     private importProductsUseCase: ImportProductsUseCase,
-    private productRepository: SupabaseProductRepository
+    private productRepository: SupabaseProductRepository,
+    private optimizeListingUseCase: OptimizeListingUseCase
   ) {}
 
   private async getUserId(request: FastifyRequest): Promise<string> {
@@ -79,6 +81,26 @@ export class ProductController {
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Erro ao atualizar produto' });
+    }
+  async generateAdCopy(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      const product = await this.productRepository.getById(request.params.id, userId);
+      
+      if (!product) {
+        return reply.status(404).send({ error: 'Produto não encontrado' });
+      }
+
+      // Passa os dados do produto para a IA gerar a copy
+      const copy = await this.optimizeListingUseCase.execute(product);
+
+      return reply.send({
+        originalProduct: product,
+        generatedAd: copy
+      });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao gerar cópia do anúncio com IA' });
     }
   }
 }

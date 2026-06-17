@@ -133,6 +133,14 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link
+                        href={`/products/${product.id}/generate-ad`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-semibold transition-colors border border-purple-200/50"
+                        title="Gerar Anúncio com IA"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Gerar Anúncio
+                      </Link>
                       <Link 
                         href={`/products/${product.id}/edit`}
                         className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip"
