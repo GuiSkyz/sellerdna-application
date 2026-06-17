@@ -120,4 +120,30 @@ export class SupabaseProductRepository {
 
     return this.getById(id, userId);
   }
+
+  async delete(id: string, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Erro ao excluir produto no Supabase:', error);
+      throw new Error('Falha ao excluir produto.');
+    }
+  }
+
+  async deleteMany(ids: string[], userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .in('id', ids)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Erro ao excluir produtos em massa no Supabase:', error);
+      throw new Error('Falha ao excluir produtos em massa.');
+    }
+  }
 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink, Trash2 } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Product {
@@ -20,6 +20,8 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -40,6 +42,58 @@ export default function ProductsPage() {
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()));
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredProducts.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredProducts.map(p => p.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(itemId => itemId !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/products/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erro ao excluir');
+      setProducts(products.filter(p => p.id !== id));
+      setSelectedIds(selectedIds.filter(itemId => itemId !== id));
+    } catch (err) {
+      console.error(err);
+      alert('Falha ao excluir o produto.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.length} produtos?`)) return;
+    setIsDeleting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/products/bulk-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      if (!res.ok) throw new Error('Erro ao excluir em massa');
+      
+      setProducts(products.filter(p => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      alert('Falha ao excluir os produtos selecionados.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -55,13 +109,25 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Meus Produtos</h1>
           <p className="text-sm text-zinc-500 mt-1">Gerencie os produtos importados da sua planilha.</p>
         </div>
-        <Link 
-          href="/products/import"
-          className="bg-zinc-900 hover:bg-zinc-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2"
-        >
-          <UploadCloud className="w-4 h-4" />
-          Importar Mais
-        </Link>
+        <div className="flex items-center gap-3">
+          {selectedIds.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-rose-200/50"
+            >
+              <Trash2 className="w-4 h-4" />
+              {isDeleting ? 'Excluindo...' : `Excluir (${selectedIds.length})`}
+            </button>
+          )}
+          <Link 
+            href="/products/import"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2"
+          >
+            <UploadCloud className="w-4 h-4" />
+            Importar Mais
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm overflow-hidden flex flex-col">
@@ -87,6 +153,14 @@ export default function ProductsPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-50/50 border-b border-zinc-100">
+                <th className="px-6 py-4 w-12 text-center">
+                  <input 
+                    type="checkbox" 
+                    checked={filteredProducts.length > 0 && selectedIds.length === filteredProducts.length}
+                    onChange={toggleSelectAll}
+                    className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Produto</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Tipo</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">SKU</th>
@@ -97,7 +171,15 @@ export default function ProductsPage() {
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-zinc-50/50 transition-colors group">
+                <tr key={product.id} className={`hover:bg-zinc-50/50 transition-colors group ${selectedIds.includes(product.id) ? 'bg-blue-50/30' : ''}`}>
+                  <td className="px-6 py-4 w-12 text-center">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedIds.includes(product.id)}
+                      onChange={() => toggleSelect(product.id)}
+                      className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-4">
                       <div className="h-10 w-10 flex-shrink-0 bg-zinc-100 rounded-lg border border-zinc-200 flex items-center justify-center overflow-hidden">
@@ -154,13 +236,21 @@ export default function ProductsPage() {
                       >
                         <Search className="w-4 h-4" />
                       </button>
+                      <button 
+                        onClick={() => handleDelete(product.id)}
+                        className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors tooltip"
+                        title="Excluir Produto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
+              
               {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <PackageSearch className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
                     <p className="text-zinc-500 font-medium">Nenhum produto encontrado.</p>
                     <p className="text-sm text-zinc-400 mt-1">Faça uma importação para começar a gerenciar.</p>

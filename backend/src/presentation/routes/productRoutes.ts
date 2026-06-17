@@ -20,4 +20,6 @@ export async function productRoutes(app: FastifyInstance) {
   app.get('/:id', controller.getById.bind(controller));
   app.put('/:id', controller.update.bind(controller));
   app.post('/:id/generate-ad-copy', controller.generateAdCopy.bind(controller));
+  app.delete('/:id', controller.delete.bind(controller));
+  app.post('/bulk-delete', controller.deleteBulk.bind(controller));
 }

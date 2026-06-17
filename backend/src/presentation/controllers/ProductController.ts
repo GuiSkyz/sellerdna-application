@@ -105,4 +105,32 @@ export class ProductController {
       return reply.status(500).send({ error: 'Erro ao gerar cópia do anúncio com IA' });
     }
   }
+
+  async delete(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      await this.productRepository.delete(request.params.id, userId);
+      return reply.status(204).send();
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao excluir produto' });
+    }
+  }
+
+  async deleteBulk(request: FastifyRequest<{ Body: { ids: string[] } }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      const { ids } = request.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return reply.status(400).send({ error: 'Nenhum ID fornecido' });
+      }
+
+      await this.productRepository.deleteMany(ids, userId);
+      return reply.status(204).send();
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao excluir produtos em massa' });
+    }
+  }
 }
