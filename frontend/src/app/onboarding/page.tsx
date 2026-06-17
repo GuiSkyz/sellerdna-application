@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useSearchParams } from 'next/navigation';
 import { AlertCircle, Store } from 'lucide-react';
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,14 +18,6 @@ export default function OnboardingPage() {
     }
     async function checkAccount() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        // Needs the auth token? If backend is protected, we need to send the session token.
-        // Wait, the Next.js frontend has the session cookie. To call the backend directly from the client, we should probably fetch the session and attach it.
-        // Or we just call an internal Next.js API route that proxies it.
-        // For simplicity in this demo, let's just assume the backend is called.
-        // Actually, if we use supabase-js here, we can get the session.
-        
-        // Let's just mock checking the account for the UI to show the connection screen.
         setLoading(false);
       } catch (err) {
         console.error(err);
@@ -34,7 +25,7 @@ export default function OnboardingPage() {
       }
     }
     checkAccount();
-  }, []);
+  }, [searchParams]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-zinc-50">Carregando...</div>;
@@ -79,5 +70,13 @@ export default function OnboardingPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-zinc-50">Carregando...</div>}>
+      <OnboardingContent />
+    </Suspense>
   );
 }
