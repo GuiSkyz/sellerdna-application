@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { MercadoLivreAuthService } from '../../infrastructure/integrations/mercadolivre/MercadoLivreAuthService';
 import { supabase } from '../../infrastructure/database/supabase';
+import jwt from 'jsonwebtoken';
 
 export class MLAuthController {
   private mlAuthService: MercadoLivreAuthService;
@@ -12,7 +13,12 @@ export class MLAuthController {
   async getAuthUrl(request: FastifyRequest, reply: FastifyReply) {
     try {
       const userId = (request as any).user.id;
-      const url = this.mlAuthService.getAuthUrl(userId);
+      
+      // Assinar o userId num JWT que expira em 10 minutos para prevenir CSRF
+      const secret = process.env.SUPABASE_ANON_KEY || 'default_secret';
+      const stateToken = jwt.sign({ userId }, secret, { expiresIn: '10m' });
+
+      const url = this.mlAuthService.getAuthUrl(stateToken);
       return reply.send({ url });
     } catch (error) {
       request.log.error(error);
@@ -22,7 +28,7 @@ export class MLAuthController {
 
   async callback(request: FastifyRequest<{ Querystring: { code: string, state: string } }>, reply: FastifyReply) {
     try {
-      const { code, state: userId } = request.query;
+      const { code, state: stateToken } = request.query;
       
       if (!code) {
         return reply.status(400).send({ error: 'O código de autorização não foi retornado pelo Mercado Livre' });
@@ -37,9 +43,22 @@ export class MLAuthController {
       });
       const mlProfile = await mlProfileResponse.json();
 
-      // O userId vem no parâmetro state do redirect do Mercado Livre
+      // O userId vem criptografado no parâmetro state (Token JWT)
+      if (!stateToken) {
+        throw new Error('State token não fornecido pela autenticação do Mercado Livre');
+      }
+
+      const secret = process.env.SUPABASE_ANON_KEY || 'default_secret';
+      let userId: string;
+      try {
+        const decoded = jwt.verify(stateToken, secret) as { userId: string };
+        userId = decoded.userId;
+      } catch (err) {
+        throw new Error('State token inválido ou expirado (CSRF Protection)');
+      }
+
       if (!userId) {
-        throw new Error('UserId não fornecido no state da autenticação');
+        throw new Error('UserId não encontrado no token state');
       }
 
       if (userId) {
