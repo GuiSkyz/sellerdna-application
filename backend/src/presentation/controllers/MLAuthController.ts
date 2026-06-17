@@ -122,7 +122,7 @@ export class MLAuthController {
       request.log.error(error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const errorMessage = encodeURIComponent(error.message || 'auth_failed');
-      return reply.redirect(`${frontendUrl}/dashboard?ml_connected=false&error=${errorMessage}`);
+      return reply.redirect(`${frontendUrl}/onboarding?error=${errorMessage}`);
     }
   }
 
