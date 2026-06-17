@@ -14,11 +14,15 @@ export class MLAuthController {
     try {
       const userId = (request as any).user.id;
       
-      // Assinar o userId num JWT que expira em 10 minutos para prevenir CSRF
-      const secret = process.env.SUPABASE_ANON_KEY || 'default_secret';
-      const stateToken = jwt.sign({ userId }, secret, { expiresIn: '10m' });
+      // Gerar PKCE code_verifier e code_challenge
+      const codeVerifier = this.mlAuthService.generateCodeVerifier();
+      const codeChallenge = this.mlAuthService.generateCodeChallenge(codeVerifier);
 
-      const url = this.mlAuthService.getAuthUrl(stateToken);
+      // Assinar o userId + codeVerifier num JWT que expira em 10 minutos
+      const secret = process.env.SUPABASE_ANON_KEY || 'default_secret';
+      const stateToken = jwt.sign({ userId, codeVerifier }, secret, { expiresIn: '10m' });
+
+      const url = this.mlAuthService.getAuthUrl(stateToken, codeChallenge);
       return reply.send({ url });
     } catch (error) {
       request.log.error(error);
@@ -34,28 +38,30 @@ export class MLAuthController {
         return reply.status(400).send({ error: 'O código de autorização não foi retornado pelo Mercado Livre' });
       }
 
-      // Troca o código temporário pelo token de acesso oficial
-      const tokenData = await this.mlAuthService.exchangeCode(code);
-      
-      // Fetch Mercado Livre user profile to get nickname
-      const mlProfileResponse = await fetch('https://api.mercadolibre.com/users/me', {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` }
-      });
-      const mlProfile = await mlProfileResponse.json();
-
-      // O userId vem criptografado no parâmetro state (Token JWT)
+      // O userId e codeVerifier vêm criptografados no parâmetro state (Token JWT)
       if (!stateToken) {
         throw new Error('State token não fornecido pela autenticação do Mercado Livre');
       }
 
       const secret = process.env.SUPABASE_ANON_KEY || 'default_secret';
       let userId: string;
+      let codeVerifier: string;
       try {
-        const decoded = jwt.verify(stateToken, secret) as { userId: string };
+        const decoded = jwt.verify(stateToken, secret) as { userId: string; codeVerifier: string };
         userId = decoded.userId;
+        codeVerifier = decoded.codeVerifier;
       } catch (err) {
         throw new Error('State token inválido ou expirado (CSRF Protection)');
       }
+
+      // Troca o código temporário pelo token de acesso oficial (com PKCE)
+      const tokenData = await this.mlAuthService.exchangeCode(code, codeVerifier);
+      
+      // Fetch Mercado Livre user profile to get nickname
+      const mlProfileResponse = await fetch('https://api.mercadolibre.com/users/me', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` }
+      });
+      const mlProfile = await mlProfileResponse.json();
 
       if (!userId) {
         throw new Error('UserId não encontrado no token state');

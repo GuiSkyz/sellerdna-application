@@ -1,4 +1,4 @@
-
+import crypto from 'crypto';
 
 export interface MLTokenResponse {
   access_token: string;
@@ -20,11 +20,31 @@ export class MercadoLivreAuthService {
     this.redirectUri = process.env.ML_REDIRECT_URI || 'http://localhost:3000/api/ml/callback';
   }
 
-  getAuthUrl(state: string): string {
-    return `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${this.appId}&redirect_uri=${this.redirectUri}&state=${state}`;
+  /**
+   * Gera um code_verifier aleatório para PKCE (entre 43-128 caracteres)
+   */
+  generateCodeVerifier(): string {
+    return crypto.randomBytes(32).toString('base64url');
   }
 
-  async exchangeCode(code: string): Promise<MLTokenResponse> {
+  /**
+   * Gera o code_challenge a partir do code_verifier usando SHA256
+   */
+  generateCodeChallenge(codeVerifier: string): string {
+    return crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+  }
+
+  /**
+   * Gera a URL de autorização do Mercado Livre com PKCE
+   */
+  getAuthUrl(state: string, codeChallenge: string): string {
+    return `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${this.appId}&redirect_uri=${encodeURIComponent(this.redirectUri)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+  }
+
+  /**
+   * Troca o código de autorização pelo token de acesso (com PKCE code_verifier)
+   */
+  async exchangeCode(code: string, codeVerifier: string): Promise<MLTokenResponse> {
     const url = 'https://api.mercadolibre.com/oauth/token';
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -32,6 +52,7 @@ export class MercadoLivreAuthService {
       client_secret: this.secretKey,
       code,
       redirect_uri: this.redirectUri,
+      code_verifier: codeVerifier,
     });
 
     const response = await fetch(url, {
