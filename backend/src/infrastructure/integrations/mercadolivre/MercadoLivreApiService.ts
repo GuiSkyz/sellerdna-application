@@ -22,15 +22,11 @@ export class MercadoLivreApiService {
   async getItemsDetails(accessToken: string, itemIds: string[]): Promise<any[]> {
     if (itemIds.length === 0) return [];
     
-    // ML API allows up to 20 ids per request on /items?ids=...
-    // For simplicity in this MVP, assuming itemIds length <= 20
     const idsParam = itemIds.join(',');
     const url = `${this.baseUrl}/items?ids=${idsParam}`;
     
     const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (!response.ok) {
@@ -38,7 +34,24 @@ export class MercadoLivreApiService {
     }
 
     const data: any[] = await response.json();
-    return data.map(item => item.body); // ML returns [{ code: 200, body: {...} }]
+    return data.map(item => item.body);
+  }
+
+  async getItemVisits(accessToken: string, itemIds: string[]): Promise<Record<string, number>> {
+    if (itemIds.length === 0) return {};
+    
+    const idsParam = itemIds.join(',');
+    const url = `${this.baseUrl}/items/visits?ids=${idsParam}`;
+    
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) return {};
+
+    const data = await response.json();
+    // data is like { "MLA123": 42, "MLA456": 12 }
+    return data;
   }
 
   async createItem(accessToken: string, itemData: any): Promise<any> {

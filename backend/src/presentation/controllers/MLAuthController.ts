@@ -30,6 +30,12 @@ export class MLAuthController {
       // Troca o código temporário pelo token de acesso oficial
       const tokenData = await this.mlAuthService.exchangeCode(code);
       
+      // Fetch Mercado Livre user profile to get nickname
+      const mlProfileResponse = await fetch('https://api.mercadolibre.com/users/me', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` }
+      });
+      const mlProfile = await mlProfileResponse.json();
+
       // Salvar os tokens no Supabase associados ao usuário autenticado
       // Como ainda não temos Auth real no Frontend, vamos pegar ou criar um usuário padrão
       let { data: users } = await supabase.from('users').select('id').limit(1);
@@ -44,15 +50,25 @@ export class MLAuthController {
       }
 
       if (userId) {
-        await supabase.from('mercado_livre_tokens').upsert({
+        // Upsert Account
+        const { data: accountData, error: accountError } = await supabase.from('mercadolivre_accounts').upsert({
           user_id: userId,
-          ml_user_id: tokenData.user_id,
+          ml_user_id: String(tokenData.user_id),
+          nickname: mlProfile.nickname || `User ${tokenData.user_id}`,
+          status: 'ACTIVE',
+        }, { onConflict: 'user_id,ml_user_id' }).select('id').single();
+
+        if (accountError) throw accountError;
+
+        // Upsert Token
+        const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+        await supabase.from('mercadolivre_tokens').upsert({
+          account_id: accountData.id,
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
-          expires_in: tokenData.expires_in,
-          scope: tokenData.scope,
+          expires_at: expiresAt,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+        }, { onConflict: 'account_id' });
       }
 
       // Após salvar, redirecionamos o usuário de volta para o painel do Frontend
@@ -63,6 +79,25 @@ export class MLAuthController {
       request.log.error(error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       return reply.redirect(`${frontendUrl}/settings?ml_connected=false&error=auth_failed`);
+    }
+  }
+
+  async listAccounts(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      let { data: users } = await supabase.from('users').select('id').limit(1);
+      let userId = users?.[0]?.id;
+      if (!userId) return reply.send([]);
+
+      const { data: accounts, error } = await supabase
+        .from('mercadolivre_accounts')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return reply.send(accounts);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao listar contas do Mercado Livre' });
     }
   }
 

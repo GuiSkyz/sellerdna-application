@@ -3,15 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, PackageSearch, UploadCloud, Settings, Box } from 'lucide-react';
+import { LayoutDashboard, PackageSearch, UploadCloud, Settings, Box, Store } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
 
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Meus Anúncios', href: '/products', icon: PackageSearch },
+    { name: 'Meus Produtos', href: '/products', icon: PackageSearch },
     { name: 'Importar Excel', href: '/products/import', icon: UploadCloud },
+    { name: 'Anúncios do ML', href: '/listings', icon: Store },
     { name: 'Configurações', href: '/settings', icon: Settings },
   ];
 

@@ -5,6 +5,7 @@ import { DuplicateListingUseCase } from '../../application/useCases/DuplicateLis
 import { OptimizeListingUseCase } from '../../application/useCases/OptimizeListingUseCase';
 import { MercadoLivreApiService } from '../../infrastructure/integrations/mercadolivre/MercadoLivreApiService';
 import { GeminiService } from '../../infrastructure/integrations/gemini/GeminiService';
+import { supabase } from '../../infrastructure/database/supabase';
 
 export class ListingController {
   private syncUserListingsUseCase: SyncUserListingsUseCase;
@@ -22,14 +23,49 @@ export class ListingController {
     this.duplicateListingUseCase = new DuplicateListingUseCase(optimizeUseCase, this.createListingUseCase);
   }
 
-  async sync(request: FastifyRequest, reply: FastifyReply) {
-    try {
-      // Mock Data (will come from Auth context & DB)
-      const userId = 'user-123';
-      const mlUserId = 'ml-user-456';
-      const mlToken = 'APP_USR-123456789-mock-token'; // The user's active access_token
+  private async getUserId(): Promise<string> {
+    let { data: users } = await supabase.from('users').select('id').limit(1);
+    let userId = users?.[0]?.id;
+    if (!userId) throw new Error('User not found');
+    return userId;
+  }
 
-      const listings = await this.syncUserListingsUseCase.execute(userId, mlUserId, mlToken);
+  async list(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId();
+      const { data: accounts } = await supabase.from('mercadolivre_accounts').select('id').eq('user_id', userId);
+      const accountIds = (accounts || []).map(a => a.id);
+      
+      if (accountIds.length === 0) return reply.send([]);
+
+      const { data: listings, error } = await supabase
+        .from('listings')
+        .select('*')
+        .in('account_id', accountIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return reply.send(listings);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao listar anúncios' });
+    }
+  }
+
+  async sync(request: FastifyRequest<{ Body: { accountId: string } }>, reply: FastifyReply) {
+    try {
+      const { accountId } = request.body;
+      if (!accountId) return reply.status(400).send({ error: 'accountId é obrigatório' });
+
+      // Fetch ML User ID and Token
+      const { data: account } = await supabase.from('mercadolivre_accounts').select('ml_user_id').eq('id', accountId).single();
+      const { data: token } = await supabase.from('mercadolivre_tokens').select('access_token').eq('account_id', accountId).single();
+
+      if (!account || !token) {
+        return reply.status(400).send({ error: 'Conta não encontrada ou não autenticada' });
+      }
+
+      const listings = await this.syncUserListingsUseCase.execute(accountId, account.ml_user_id, token.access_token);
 
       return reply.send({ message: 'Sincronização concluída', count: listings.length, listings });
     } catch (error) {

@@ -50,8 +50,8 @@ export default function ProductsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900">Meus Anúncios</h1>
-          <p className="text-zinc-500 mt-1.5 text-sm">Gerencie os produtos importados e utilize a IA para otimização.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Meus Produtos</h1>
+          <p className="text-sm text-zinc-500 mt-1">Gerencie os produtos importados da sua planilha.</p>
         </div>
         <Link 
           href="/products/import"
