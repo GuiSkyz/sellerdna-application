@@ -1,9 +1,8 @@
-import { google, drive_v3 } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
+import { google, drive_v3, Auth } from 'googleapis';
 import { PassThrough } from 'stream';
 
 export class GoogleDriveService {
-  private oauth2Client: OAuth2Client;
+  private oauth2Client: Auth.OAuth2Client;
 
   constructor() {
     this.oauth2Client = new google.auth.OAuth2(

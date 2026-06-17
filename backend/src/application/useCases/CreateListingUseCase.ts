@@ -30,7 +30,7 @@ export class CreateListingUseCase {
     }
 
     // 2. Resolve Category ID (Inference if missing)
-    let resolvedCategoryId = categoryId;
+    let resolvedCategoryId: string | undefined | null = categoryId;
     if (!resolvedCategoryId) {
       resolvedCategoryId = await this.mlApiService.predictCategory(title);
       if (!resolvedCategoryId) {
@@ -41,7 +41,7 @@ export class CreateListingUseCase {
     // 3. Transform Product to ML Item Format
     const mlItemPayload = {
       title: title.substring(0, 60), // ML max limit
-      category_id: resolvedCategoryId,
+      category_id: resolvedCategoryId as string,
       price: price,
       currency_id: 'BRL',
       available_quantity: quantity,
