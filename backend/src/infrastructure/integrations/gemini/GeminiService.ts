@@ -2,18 +2,17 @@ import { GoogleGenAI } from '@google/genai';
 
 export class GeminiService {
   private ai: GoogleGenAI;
-  // Modelos ordenados por prioridade baseados na cota disponível (RPM)
+  // Modelos reais do Google Gemini
   private fallbackModels = [
-    'gemini-3.1-flash-lite', // 15 RPM
-    'gemini-2.5-flash-lite', // 10 RPM
-    'gemini-3.5-flash',      // 5 RPM
-    'gemini-3-flash',        // 5 RPM
-    'gemini-2.5-flash'       // 5 RPM
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b'
   ];
 
   constructor() {
     this.ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || '',
+      apiKey: process.env.GEMINI_API_KEY || 'AIzaSyA_PLACEHOLDER_NOT_REAL', // Evita crash no construtor
     });
   }
 
