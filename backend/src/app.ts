@@ -12,8 +12,11 @@ export async function buildApp() {
     logger: true,
   });
 
+  const allowedOrigins = ['http://localhost:3000'];
+  if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
+
   await app.register(cors, {
-    origin: '*', // TODO: configure para o domínio de produção
+    origin: allowedOrigins,
   });
 
   await app.register(rateLimit, {

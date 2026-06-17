@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Store, RefreshCw, Search, ExternalLink, Activity, ShoppingCart, Eye } from 'lucide-react';
+import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Listing {
   id: string;
@@ -27,7 +28,7 @@ export default function ListingsPage() {
   const fetchListings = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-      const res = await fetch(`${apiUrl}/api/listings`);
+      const res = await authenticatedFetch(`${apiUrl}/api/listings`);
       if (!res.ok) throw new Error('Erro ao buscar anúncios');
       const data = await res.json();
       setListings(data);
@@ -41,7 +42,7 @@ export default function ListingsPage() {
   const fetchAccounts = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-      const res = await fetch(`${apiUrl}/api/ml/accounts`);
+      const res = await authenticatedFetch(`${apiUrl}/api/ml/accounts`);
       if (!res.ok) throw new Error('Erro ao buscar contas');
       const data = await res.json();
       setAccounts(data);
@@ -67,7 +68,7 @@ export default function ListingsPage() {
       // Por simplicidade neste MVP, sincroniza a primeira conta conectada
       const accountId = accounts[0].id;
       
-      const res = await fetch(`${apiUrl}/api/listings/sync`, {
+      const res = await authenticatedFetch(`${apiUrl}/api/listings/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId })

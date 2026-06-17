@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
+import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -14,7 +15,7 @@ function SettingsContent() {
     async function fetchAccounts() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await fetch(`${apiUrl}/api/ml/accounts`);
+        const res = await authenticatedFetch(`${apiUrl}/api/ml/accounts`);
         if (res.ok) {
           const data = await res.json();
           setAccounts(data);

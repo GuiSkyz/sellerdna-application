@@ -6,6 +6,7 @@ import { OptimizeListingUseCase } from '../../application/useCases/OptimizeListi
 import { MercadoLivreApiService } from '../../infrastructure/integrations/mercadolivre/MercadoLivreApiService';
 import { GeminiService } from '../../infrastructure/integrations/gemini/GeminiService';
 import { supabase } from '../../infrastructure/database/supabase';
+import { getValidMLToken } from '../../infrastructure/integrations/mercadolivre/tokenHelper';
 
 export class ListingController {
   private syncUserListingsUseCase: SyncUserListingsUseCase;
@@ -54,15 +55,16 @@ export class ListingController {
       const { accountId } = request.body;
       if (!accountId) return reply.status(400).send({ error: 'accountId é obrigatório' });
 
-      // Fetch ML User ID and Token
+      // Fetch ML User ID
       const { data: account } = await supabase.from('mercadolivre_accounts').select('ml_user_id').eq('id', accountId).single();
-      const { data: token } = await supabase.from('mercadolivre_tokens').select('access_token').eq('account_id', accountId).single();
-
-      if (!account || !token) {
-        return reply.status(400).send({ error: 'Conta não encontrada ou não autenticada' });
+      
+      if (!account) {
+        return reply.status(400).send({ error: 'Conta não encontrada' });
       }
 
-      const listings = await this.syncUserListingsUseCase.execute(accountId, account.ml_user_id, token.access_token);
+      const validToken = await getValidMLToken(accountId);
+
+      const listings = await this.syncUserListingsUseCase.execute(accountId, account.ml_user_id, validToken);
 
       return reply.send({ message: 'Sincronização concluída', count: listings.length, listings });
     } catch (error) {
@@ -78,11 +80,14 @@ export class ListingController {
         return reply.status(400).send({ error: 'productId e categoryId são obrigatórios' });
       }
 
-      // Mock Data (will come from Auth context)
-      const userId = 'user-123';
-      const mlToken = 'APP_USR-123456789-mock-token'; // The user's active access_token
+      const userId = await this.getUserId(request);
+      
+      const { data: account } = await supabase.from('mercadolivre_accounts').select('id').eq('user_id', userId).single();
+      if (!account) return reply.status(400).send({ error: 'Nenhuma conta do Mercado Livre conectada' });
+      
+      const validToken = await getValidMLToken(account.id);
 
-      const newListing = await this.createListingUseCase.execute(userId, productId, mlToken, categoryId);
+      const newListing = await this.createListingUseCase.execute(userId, productId, validToken, categoryId);
 
       return reply.status(201).send({ message: 'Anúncio publicado com sucesso no Mercado Livre', listing: newListing });
     } catch (error) {
@@ -100,10 +105,14 @@ export class ListingController {
         return reply.status(400).send({ error: 'categoryId é obrigatório para duplicação' });
       }
 
-      const userId = 'user-123';
-      const mlToken = 'APP_USR-123456789-mock-token';
+      const userId = await this.getUserId(request);
+      
+      const { data: account } = await supabase.from('mercadolivre_accounts').select('id').eq('user_id', userId).single();
+      if (!account) return reply.status(400).send({ error: 'Nenhuma conta do Mercado Livre conectada' });
+      
+      const validToken = await getValidMLToken(account.id);
 
-      const result = await this.duplicateListingUseCase.execute(userId, id, mlToken, categoryId, useAI);
+      const result = await this.duplicateListingUseCase.execute(userId, id, validToken, categoryId, useAI);
 
       return reply.status(200).send(result);
     } catch (error) {

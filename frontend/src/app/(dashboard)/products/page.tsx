@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink } from 'lucide-react';
+import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Product {
   id: string;
@@ -23,7 +24,7 @@ export default function ProductsPage() {
     async function fetchProducts() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await fetch(`${apiUrl}/api/products`);
+        const res = await authenticatedFetch(`${apiUrl}/api/products`);
         if (!res.ok) throw new Error('Erro ao buscar produtos');
         const data = await res.json();
         setProducts(data);

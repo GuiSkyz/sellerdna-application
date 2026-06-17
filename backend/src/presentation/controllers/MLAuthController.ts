@@ -19,7 +19,7 @@ export class MLAuthController {
       const codeChallenge = this.mlAuthService.generateCodeChallenge(codeVerifier);
 
       // Assinar o userId + codeVerifier num JWT que expira em 10 minutos
-      const secret = process.env.SUPABASE_ANON_KEY || 'default_secret';
+      const secret = process.env.JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'fallback_secret_change_in_prod';
       const stateToken = jwt.sign({ userId, codeVerifier }, secret, { expiresIn: '10m' });
 
       const url = this.mlAuthService.getAuthUrl(stateToken, codeChallenge);
@@ -43,7 +43,7 @@ export class MLAuthController {
         throw new Error('State token não fornecido pela autenticação do Mercado Livre');
       }
 
-      const secret = process.env.SUPABASE_ANON_KEY || 'default_secret';
+      const secret = process.env.JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'fallback_secret_change_in_prod';
       let userId: string;
       let codeVerifier: string;
       try {
@@ -151,8 +151,7 @@ export class MLAuthController {
 
   async listAccounts(request: FastifyRequest, reply: FastifyReply) {
     try {
-      let { data: users } = await supabase.from('users').select('id').limit(1);
-      let userId = users?.[0]?.id;
+      const userId = (request as any).user.id;
       if (!userId) return reply.send([]);
 
       const { data: accounts, error } = await supabase
