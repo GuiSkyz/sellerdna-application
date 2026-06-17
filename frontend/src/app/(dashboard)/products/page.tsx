@@ -114,14 +114,43 @@ export default function ProductsPage() {
         </div>
         <div className="flex items-center gap-3">
           {selectedIds.length > 0 && (
-            <button 
-              onClick={handleBulkDelete}
-              disabled={isDeleting}
-              className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-rose-200/50"
-            >
-              <Trash2 className="w-4 h-4" />
-              {isDeleting ? 'Excluindo...' : `Excluir (${selectedIds.length})`}
-            </button>
+            <>
+              <button 
+                onClick={async () => {
+                  if (!confirm(`Sincronizar fotos para ${selectedIds.length} produtos via Google Drive?`)) return;
+                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+                  let imported = 0;
+                  
+                  // Executa importação um por um (MVP)
+                  for (const id of selectedIds) {
+                    try {
+                      await authenticatedFetch(`${apiUrl}/api/gdrive/import-photos`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ productId: id })
+                      });
+                      imported++;
+                    } catch (e) {
+                      console.error(`Falha ao importar foto do produto ${id}`, e);
+                    }
+                  }
+                  alert(`Importação finalizada! ${imported} fotos importadas com sucesso.`);
+                  window.location.reload();
+                }}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-blue-200/50"
+              >
+                <UploadCloud className="w-4 h-4" />
+                Buscar Fotos (Drive)
+              </button>
+              <button 
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-rose-200/50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {isDeleting ? 'Excluindo...' : `Excluir (${selectedIds.length})`}
+              </button>
+            </>
           )}
           <Link 
             href="/products/import"
