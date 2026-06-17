@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Box, Play, Pause, CheckCircle2, TrendingUp, Package, Activity, UploadCloud } from 'lucide-react';
+import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -12,7 +13,7 @@ export default function DashboardPage() {
     async function fetchMetrics() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await fetch(`${apiUrl}/api/dashboard/metrics`);
+        const res = await authenticatedFetch(`${apiUrl}/api/dashboard/metrics`);
         const data = await res.json();
         setMetrics(data);
       } catch (err) {

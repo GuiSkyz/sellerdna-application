@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ExcelUploader } from '@/components/features/ExcelUploader';
 import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
+import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 export default function ImportProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -20,7 +21,7 @@ export default function ImportProductsPage() {
     
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-      const response = await fetch(`${apiUrl}/api/products/import`, {
+      const response = await authenticatedFetch(`${apiUrl}/api/products/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products })
