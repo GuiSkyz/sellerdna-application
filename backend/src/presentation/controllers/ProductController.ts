@@ -42,11 +42,43 @@ export class ProductController {
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {
       const userId = await this.getUserId(request);
-      const { data: products } = await supabase.from('products').select('*').eq('user_id', userId);
+      const { data: products } = await supabase.from('products').select('*').eq('user_id', userId).order('created_at', { ascending: false });
       return reply.send(products || []);
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Erro ao listar produtos' });
+    }
+  }
+
+  async getById(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      const product = await this.productRepository.getById(request.params.id, userId);
+      
+      if (!product) {
+        return reply.status(404).send({ error: 'Produto não encontrado' });
+      }
+
+      return reply.send(product);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao buscar produto' });
+    }
+  }
+
+  async update(request: FastifyRequest<{ Params: { id: string }, Body: any }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      const product = await this.productRepository.update(request.params.id, userId, request.body as any);
+      
+      if (!product) {
+        return reply.status(404).send({ error: 'Produto não encontrado ou sem permissão' });
+      }
+
+      return reply.send(product);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao atualizar produto' });
     }
   }
 }

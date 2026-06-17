@@ -2,6 +2,7 @@ export interface Product {
   id: string;
   userId: string;
   name: string;
+  productType?: string;
   brand?: string;
   sizeMl?: string;
   perfumeType?: string;

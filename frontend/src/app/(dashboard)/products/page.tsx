@@ -8,6 +8,7 @@ import { authenticatedFetch } from '@/utils/authenticatedFetch';
 interface Product {
   id: string;
   name: string;
+  productType?: string;
   brand: string;
   price: number;
   quantity: number;
@@ -87,6 +88,7 @@ export default function ProductsPage() {
             <thead>
               <tr className="bg-zinc-50/50 border-b border-zinc-100">
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Produto</th>
+                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Tipo</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">SKU</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Preço (R$)</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Estoque</th>
@@ -111,6 +113,11 @@ export default function ProductsPage() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-sm text-zinc-500">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      {product.productType || 'Perfume'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2.5 py-1 bg-zinc-100 text-zinc-600 rounded-md text-xs font-medium border border-zinc-200/50">
                       {product.sku || 'N/A'}
@@ -124,20 +131,28 @@ export default function ProductsPage() {
                       {product.quantity} un
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
-                    <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-semibold transition-colors border border-purple-200/50">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Gerar c/ IA
-                    </button>
-                    <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors">
-                      <ExternalLink className="w-4 h-4" />
-                    </button>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link 
+                        href={`/products/${product.id}/edit`}
+                        className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip"
+                        title="Editar Produto"
+                      >
+                        <Search className="w-4 h-4" /> {/* TODO: usar ícone de Edit */}
+                      </Link>
+                      <button 
+                        className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors tooltip"
+                        title="Ver Detalhes"
+                      >
+                        <Search className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <PackageSearch className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
                     <p className="text-zinc-500 font-medium">Nenhum produto encontrado.</p>
                     <p className="text-sm text-zinc-400 mt-1">Faça uma importação para começar a gerenciar.</p>

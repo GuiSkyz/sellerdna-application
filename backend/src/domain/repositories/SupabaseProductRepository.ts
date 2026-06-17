@@ -8,6 +8,7 @@ export class SupabaseProductRepository {
         id: p.id,
         user_id: p.userId,
         name: p.name,
+        product_type: p.productType,
         brand: p.brand,
         size_ml: p.sizeMl,
         perfume_type: p.perfumeType,
@@ -44,6 +45,7 @@ export class SupabaseProductRepository {
       id: row.id,
       userId: row.user_id,
       name: row.name,
+      productType: row.product_type,
       brand: row.brand,
       sizeMl: row.size_ml,
       perfumeType: row.perfume_type,
@@ -57,5 +59,65 @@ export class SupabaseProductRepository {
       imageUrl: row.image_url,
       createdAt: new Date(row.created_at)
     }));
+  }
+
+  async getById(id: string, userId: string): Promise<Product | null> {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) return null;
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      productType: data.product_type,
+      brand: data.brand,
+      sizeMl: data.size_ml,
+      perfumeType: data.perfume_type,
+      price: Number(data.price),
+      quantity: Number(data.quantity),
+      gender: data.gender,
+      expirationDate: data.expiration_date,
+      weight: Number(data.weight),
+      ncm: data.ncm,
+      sku: data.sku,
+      imageUrl: data.image_url,
+      createdAt: new Date(data.created_at)
+    };
+  }
+
+  async update(id: string, userId: string, updateData: Partial<Product>): Promise<Product | null> {
+    const mapToSnakeCase: any = {};
+    if (updateData.name !== undefined) mapToSnakeCase.name = updateData.name;
+    if (updateData.productType !== undefined) mapToSnakeCase.product_type = updateData.productType;
+    if (updateData.brand !== undefined) mapToSnakeCase.brand = updateData.brand;
+    if (updateData.sizeMl !== undefined) mapToSnakeCase.size_ml = updateData.sizeMl;
+    if (updateData.perfumeType !== undefined) mapToSnakeCase.perfume_type = updateData.perfumeType;
+    if (updateData.price !== undefined) mapToSnakeCase.price = updateData.price;
+    if (updateData.quantity !== undefined) mapToSnakeCase.quantity = updateData.quantity;
+    if (updateData.gender !== undefined) mapToSnakeCase.gender = updateData.gender;
+    if (updateData.expirationDate !== undefined) mapToSnakeCase.expiration_date = updateData.expirationDate;
+    if (updateData.weight !== undefined) mapToSnakeCase.weight = updateData.weight;
+    if (updateData.ncm !== undefined) mapToSnakeCase.ncm = updateData.ncm;
+    if (updateData.sku !== undefined) mapToSnakeCase.sku = updateData.sku;
+    if (updateData.imageUrl !== undefined) mapToSnakeCase.image_url = updateData.imageUrl;
+
+    const { error } = await supabase
+      .from('products')
+      .update(mapToSnakeCase)
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Erro ao atualizar produto no Supabase:', error);
+      throw new Error('Falha ao atualizar produto no banco de dados.');
+    }
+
+    return this.getById(id, userId);
   }
 }

@@ -11,6 +11,7 @@ export class ImportProductsUseCase {
       id: randomUUID(),
       userId,
       name: dto.name,
+      productType: dto.productType,
       brand: dto.brand,
       sizeMl: dto.sizeMl,
       perfumeType: dto.perfumeType,

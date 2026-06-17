@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const ImportProductSchema = z.object({
   name: z.string().min(1, "O nome do produto é obrigatório"),
+  productType: z.string().optional().default('Perfume'),
   brand: z.string().optional(),
   sizeMl: z.string().optional(),
   perfumeType: z.string().optional(),
