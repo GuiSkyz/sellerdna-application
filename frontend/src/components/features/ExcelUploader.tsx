@@ -45,6 +45,7 @@ export function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
         
         // Mapeia para o formato esperado pela API, ignorando linhas vazias sem nome
         const mappedData = jsonData.map((row: any) => ({
+          customId: String(row['ID'] || row['Id'] || row['id'] || ''),
           name: row['NOME'] || row['Nome'] || '',
           brand: row['MARCA'] || row['Marca'] || '',
           sizeMl: row['TAMANHO (ML)'] || row['Tamanho (ML)'] || '',

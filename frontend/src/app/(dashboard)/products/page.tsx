@@ -14,6 +14,9 @@ interface Product {
   quantity: number;
   imageUrl?: string;
   sku: string;
+  customId?: string;
+  ncm?: string;
+  mlListingsCount?: number;
 }
 
 export default function ProductsPage() {
@@ -161,11 +164,13 @@ export default function ProductsPage() {
                     className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
+                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">CUST ID</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Produto</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Tipo</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">SKU</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Preço (R$)</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Estoque</th>
+                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">NCM</th>
+                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">Anúncios ML</th>
                 <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-right">Ações</th>
               </tr>
             </thead>
@@ -179,6 +184,9 @@ export default function ProductsPage() {
                       onChange={() => toggleSelect(product.id)}
                       className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 font-mono">
+                    {product.customId || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-4">
@@ -195,14 +203,9 @@ export default function ProductsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-zinc-500">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                      {product.productType || 'Perfume'}
-                    </span>
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2.5 py-1 bg-zinc-100 text-zinc-600 rounded-md text-xs font-medium border border-zinc-200/50">
-                      {product.sku || 'N/A'}
+                      {product.sku || '-'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900">
@@ -211,6 +214,14 @@ export default function ProductsPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`text-sm font-medium ${product.quantity > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {product.quantity} un
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-500">
+                    {product.ncm || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
+                      {product.mlListingsCount || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">

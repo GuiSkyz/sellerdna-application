@@ -7,6 +7,7 @@ export class SupabaseProductRepository {
       products.map(p => ({
         id: p.id,
         user_id: p.userId,
+        custom_id: p.customId,
         name: p.name,
         product_type: p.productType,
         brand: p.brand,
@@ -44,6 +45,7 @@ export class SupabaseProductRepository {
     return (data || []).map(row => ({
       id: row.id,
       userId: row.user_id,
+      customId: row.custom_id,
       name: row.name,
       productType: row.product_type,
       brand: row.brand,
@@ -74,6 +76,7 @@ export class SupabaseProductRepository {
     return {
       id: data.id,
       userId: data.user_id,
+      customId: data.custom_id,
       name: data.name,
       productType: data.product_type,
       brand: data.brand,

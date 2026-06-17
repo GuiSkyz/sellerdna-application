@@ -1,6 +1,7 @@
 export interface Product {
   id: string;
   userId: string;
+  customId?: string;
   name: string;
   productType?: string;
   brand?: string;
