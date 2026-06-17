@@ -33,6 +33,10 @@ export async function buildApp() {
   await app.register(mlRoutes, { prefix: '/api/ml' });
   await app.register(listingRoutes, { prefix: '/api/listings' });
   await app.register(dashboardRoutes, { prefix: '/api/dashboard' });
+  
+  // Dynamic import to avoid circular dependencies or unresolved paths if needed, but static is fine
+  const { gdriveRoutes } = require('./presentation/routes/gdriveRoutes');
+  await app.register(gdriveRoutes, { prefix: '/api/gdrive' });
 
   return app;
 }
