@@ -1,47 +1,71 @@
 import { MercadoLivreApiService } from '../../infrastructure/integrations/mercadolivre/MercadoLivreApiService';
+import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
 import { randomUUID } from 'crypto';
 
+export interface CreateListingInput {
+  userId: string;
+  productId: string;
+  accountToken: string;
+  title: string;
+  description: string;
+  price: number;
+  quantity: number;
+  categoryId?: string;
+}
+
 export class CreateListingUseCase {
-  constructor(private mlApiService: MercadoLivreApiService) {}
+  constructor(
+    private mlApiService: MercadoLivreApiService,
+    private productRepository: SupabaseProductRepository
+  ) {}
 
-  async execute(userId: string, productId: string, accountToken: string, categoryId: string): Promise<any> {
-    // 1. Fetch Product from DB
-    // const product = await this.productRepository.findById(productId);
+  async execute(input: CreateListingInput): Promise<any> {
+    const { userId, productId, accountToken, title, description, price, quantity, categoryId } = input;
+
+    // 1. Fetch Product from DB to get the Image URL and fallback data
+    const product = await this.productRepository.getById(productId, userId);
     
-    // Mock Product for MVP
-    const product = {
-      id: productId,
-      name: 'Perfume 212 Vip Carolina Herrera 100ml',
-      price: 450.00,
-      quantity: 10,
-      imageUrl: 'https://example.com/image.jpg'
-    };
+    if (!product) {
+      throw new Error('Produto não encontrado');
+    }
 
-    // 2. Transform Product to ML Item Format
+    // 2. Resolve Category ID (Inference if missing)
+    let resolvedCategoryId = categoryId;
+    if (!resolvedCategoryId) {
+      resolvedCategoryId = await this.mlApiService.predictCategory(title);
+      if (!resolvedCategoryId) {
+        throw new Error('Não foi possível inferir a categoria para este produto automaticamente. Informe manualmente.');
+      }
+    }
+
+    // 3. Transform Product to ML Item Format
     const mlItemPayload = {
-      title: product.name,
-      category_id: categoryId, // ML Category ID (e.g., MLB1234)
-      price: product.price,
+      title: title.substring(0, 60), // ML max limit
+      category_id: resolvedCategoryId,
+      price: price,
       currency_id: 'BRL',
-      available_quantity: product.quantity,
+      available_quantity: quantity,
       buying_mode: 'buy_it_now',
       condition: 'new',
-      listing_type_id: 'gold_special', // Classic
-      pictures: [
+      listing_type_id: 'gold_special', // Classic (gold_pro for Premium)
+      description: {
+        plain_text: description
+      },
+      pictures: product.imageUrl ? [
         { source: product.imageUrl }
-      ],
+      ] : [],
       attributes: [
-        { id: 'ITEM_CONDITION', value_id: '2230284' } // New
+        { id: 'ITEM_CONDITION', value_name: 'Novo' }
       ]
     };
 
-    // 3. Call ML API
+    // 4. Call ML API
     const mlResponse = await this.mlApiService.createItem(accountToken, mlItemPayload);
 
-    // 4. Save Listing in DB
+    // 5. Build Local Record
     const newListing = {
       id: randomUUID(),
-      accountId: 'account-uuid', // should come from the user's ML account mapping
+      accountId: 'account-uuid', // To be properly mapped
       productId: product.id,
       mlItemId: mlResponse.id,
       title: mlResponse.title,
@@ -52,7 +76,7 @@ export class CreateListingUseCase {
       createdAt: new Date()
     };
 
-    // await this.listingRepository.create(newListing);
+    // await this.listingRepository.create(newListing); // TODO: save to DB
 
     return newListing;
   }

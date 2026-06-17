@@ -270,12 +270,32 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700">SKU (Código)</label>
-              <input 
-                name="sku"
-                value={formData.sku}
-                onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-              />
+              <div className="flex items-center gap-2">
+                <input 
+                  name="sku"
+                  value={formData.sku}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!formData.name) return;
+                    // Auto-generate SKU based on product name (slugify)
+                    const generatedSku = formData.name
+                      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, '-') // replace non-alphanumeric with dash
+                      .replace(/^-+|-+$/g, ''); // remove leading/trailing dashes
+                    
+                    setFormData(prev => ({ ...prev, sku: generatedSku.toUpperCase() }));
+                  }}
+                  className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-lg text-xs font-semibold border border-zinc-200 transition-colors whitespace-nowrap"
+                  title="Gerar SKU com base no Título"
+                >
+                  Gerar Automático
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700">NCM</label>

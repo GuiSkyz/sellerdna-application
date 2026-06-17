@@ -8,6 +8,8 @@ import { GeminiService } from '../../infrastructure/integrations/gemini/GeminiSe
 import { supabase } from '../../infrastructure/database/supabase';
 import { getValidMLToken } from '../../infrastructure/integrations/mercadolivre/tokenHelper';
 
+import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
+
 export class ListingController {
   private syncUserListingsUseCase: SyncUserListingsUseCase;
   private createListingUseCase: CreateListingUseCase;
@@ -16,9 +18,10 @@ export class ListingController {
   constructor() {
     const mlApiService = new MercadoLivreApiService();
     const aiService = new GeminiService();
+    const productRepository = new SupabaseProductRepository();
     
     this.syncUserListingsUseCase = new SyncUserListingsUseCase(mlApiService);
-    this.createListingUseCase = new CreateListingUseCase(mlApiService);
+    this.createListingUseCase = new CreateListingUseCase(mlApiService, productRepository);
     
     const optimizeUseCase = new OptimizeListingUseCase(aiService);
     this.duplicateListingUseCase = new DuplicateListingUseCase(optimizeUseCase, this.createListingUseCase);
@@ -73,11 +76,11 @@ export class ListingController {
     }
   }
 
-  async create(request: FastifyRequest<{ Body: { productId: string, categoryId: string } }>, reply: FastifyReply) {
+  async create(request: FastifyRequest<{ Body: { productId: string, title: string, description: string, price: number, quantity: number, categoryId?: string } }>, reply: FastifyReply) {
     try {
-      const { productId, categoryId } = request.body;
-      if (!productId || !categoryId) {
-        return reply.status(400).send({ error: 'productId e categoryId são obrigatórios' });
+      const { productId, title, description, price, quantity, categoryId } = request.body;
+      if (!productId) {
+        return reply.status(400).send({ error: 'productId é obrigatório' });
       }
 
       const userId = await this.getUserId(request);
@@ -87,7 +90,16 @@ export class ListingController {
       
       const validToken = await getValidMLToken(account.id);
 
-      const newListing = await this.createListingUseCase.execute(userId, productId, validToken, categoryId);
+      const newListing = await this.createListingUseCase.execute({
+        userId,
+        productId,
+        accountToken: validToken,
+        title,
+        description,
+        price,
+        quantity,
+        categoryId
+      });
 
       return reply.status(201).send({ message: 'Anúncio publicado com sucesso no Mercado Livre', listing: newListing });
     } catch (error) {

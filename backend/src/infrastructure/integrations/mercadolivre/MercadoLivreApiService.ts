@@ -73,4 +73,17 @@ export class MercadoLivreApiService {
 
     return await response.json();
   }
+
+  async predictCategory(title: string): Promise<string | null> {
+    const url = `${this.baseUrl}/sites/MLB/domain_discovery/search?limit=1&q=${encodeURIComponent(title)}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return data[0].category_id;
+    }
+    return null;
+  }
 }

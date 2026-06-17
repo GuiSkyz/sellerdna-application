@@ -39,9 +39,16 @@ export class DuplicateListingUseCase {
     }
 
     // 4. Create new Listing Payload
-    // In a real scenario, CreateListingUseCase would accept the overrides (finalTitle, finalDescription)
-    // For this MVP, we simulate passing the new data to ML
-    const newListing = await this.createListingUseCase.execute(userId, originalListing.productId, accountToken, categoryId);
+    const newListing = await this.createListingUseCase.execute({
+      userId,
+      productId: originalListing.productId,
+      accountToken,
+      title: finalTitle,
+      description: finalDescription,
+      price: originalListing.price,
+      quantity: originalListing.availableQuantity,
+      categoryId
+    });
 
     // 5. Update the duplicated listing reference (LISTING_DUPLICATES table)
     // await this.duplicateRepository.create({ originalListingId, newListingId: newListing.id, ... })
