@@ -82,6 +82,8 @@ export class ProductController {
       request.log.error(error);
       return reply.status(500).send({ error: 'Erro ao atualizar produto' });
     }
+  }
+
   async generateAdCopy(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     try {
       const userId = await this.getUserId(request);
