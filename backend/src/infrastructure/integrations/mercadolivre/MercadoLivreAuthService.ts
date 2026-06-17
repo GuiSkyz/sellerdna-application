@@ -44,7 +44,15 @@ export class MercadoLivreAuthService {
     });
 
     if (!response.ok) {
-      throw new Error(`ML Auth Error: ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error('ML Token Exchange Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorBody,
+        redirect_uri: this.redirectUri,
+        app_id: this.appId,
+      });
+      throw new Error(`ML Auth Error: ${response.statusText} - ${errorBody}`);
     }
 
     const data = await response.json() as MLTokenResponse;
