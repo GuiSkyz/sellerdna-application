@@ -1,8 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { ListingController } from '../controllers/ListingController';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 export async function listingRoutes(app: FastifyInstance) {
   const controller = new ListingController();
+
+  app.addHook('preHandler', authMiddleware);
 
   app.get('/', controller.list.bind(controller));
   app.post('/sync', controller.sync.bind(controller));

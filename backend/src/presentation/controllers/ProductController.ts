@@ -10,23 +10,13 @@ export class ProductController {
     private productRepository: SupabaseProductRepository
   ) {}
 
-  private async getUserId(): Promise<string> {
-    let { data: users } = await supabase.from('users').select('id').limit(1);
-    let userId = users?.[0]?.id;
-
-    if (!userId) {
-      const { data: newUser } = await supabase.from('users').insert({ 
-        email: 'test@sellerdna.com', 
-        name: 'Test User' 
-      }).select('id').single();
-      userId = newUser?.id;
-    }
-    return userId;
+  private async getUserId(request: FastifyRequest): Promise<string> {
+    return (request as any).user.id;
   }
 
   async import(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const userId = await this.getUserId();
+      const userId = await this.getUserId(request);
 
       const parsed = ImportProductsPayloadSchema.safeParse(request.body);
       
@@ -51,9 +41,9 @@ export class ProductController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {
-      // O repositório lista tudo (depois filtraremos por userId quando tivermos Multi-tenant real)
-      const products = await this.productRepository.listAll();
-      return reply.send(products);
+      const userId = await this.getUserId(request);
+      const { data: products } = await supabase.from('products').select('*').eq('user_id', userId);
+      return reply.send(products || []);
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Erro ao listar produtos' });

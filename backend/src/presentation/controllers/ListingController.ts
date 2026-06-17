@@ -23,16 +23,13 @@ export class ListingController {
     this.duplicateListingUseCase = new DuplicateListingUseCase(optimizeUseCase, this.createListingUseCase);
   }
 
-  private async getUserId(): Promise<string> {
-    let { data: users } = await supabase.from('users').select('id').limit(1);
-    let userId = users?.[0]?.id;
-    if (!userId) throw new Error('User not found');
-    return userId;
+  private async getUserId(request: FastifyRequest): Promise<string> {
+    return (request as any).user.id;
   }
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const userId = await this.getUserId();
+      const userId = await this.getUserId(request);
       const { data: accounts } = await supabase.from('mercadolivre_accounts').select('id').eq('user_id', userId);
       const accountIds = (accounts || []).map(a => a.id);
       

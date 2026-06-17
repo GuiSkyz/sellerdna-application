@@ -11,7 +11,8 @@ export class MLAuthController {
 
   async getAuthUrl(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const url = this.mlAuthService.getAuthUrl();
+      const userId = (request as any).user.id;
+      const url = this.mlAuthService.getAuthUrl(userId);
       return reply.send({ url });
     } catch (error) {
       request.log.error(error);
@@ -19,9 +20,9 @@ export class MLAuthController {
     }
   }
 
-  async callback(request: FastifyRequest<{ Querystring: { code: string } }>, reply: FastifyReply) {
+  async callback(request: FastifyRequest<{ Querystring: { code: string, state: string } }>, reply: FastifyReply) {
     try {
-      const { code } = request.query;
+      const { code, state: userId } = request.query;
       
       if (!code) {
         return reply.status(400).send({ error: 'O código de autorização não foi retornado pelo Mercado Livre' });
@@ -36,17 +37,9 @@ export class MLAuthController {
       });
       const mlProfile = await mlProfileResponse.json();
 
-      // Salvar os tokens no Supabase associados ao usuário autenticado
-      // Como ainda não temos Auth real no Frontend, vamos pegar ou criar um usuário padrão
-      let { data: users } = await supabase.from('users').select('id').limit(1);
-      let userId = users?.[0]?.id;
-
+      // O userId vem no parâmetro state do redirect do Mercado Livre
       if (!userId) {
-        const { data: newUser } = await supabase.from('users').insert({ 
-          email: 'test@sellerdna.com', 
-          name: 'Test User' 
-        }).select('id').single();
-        userId = newUser?.id;
+        throw new Error('UserId não fornecido no state da autenticação');
       }
 
       if (userId) {
@@ -73,12 +66,29 @@ export class MLAuthController {
 
       // Após salvar, redirecionamos o usuário de volta para o painel do Frontend
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      return reply.redirect(`${frontendUrl}/settings?ml_connected=true`);
+      return reply.redirect(`${frontendUrl}/dashboard?ml_connected=true`);
       
     } catch (error) {
       request.log.error(error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      return reply.redirect(`${frontendUrl}/settings?ml_connected=false&error=auth_failed`);
+      return reply.redirect(`${frontendUrl}/dashboard?ml_connected=false&error=auth_failed`);
+    }
+  }
+
+  async getConnectedAccounts(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const userId = (request as any).user.id;
+
+      const { data: accounts, error } = await supabase
+        .from('mercadolivre_accounts')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return reply.send(accounts);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao listar contas do Mercado Livre' });
     }
   }
 

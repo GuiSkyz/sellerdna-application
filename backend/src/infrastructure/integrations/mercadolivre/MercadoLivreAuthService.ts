@@ -20,8 +20,8 @@ export class MercadoLivreAuthService {
     this.redirectUri = process.env.ML_REDIRECT_URI || 'http://localhost:3000/api/ml/callback';
   }
 
-  getAuthUrl(): string {
-    return `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${this.appId}&redirect_uri=${this.redirectUri}`;
+  getAuthUrl(state: string): string {
+    return `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${this.appId}&redirect_uri=${this.redirectUri}&state=${state}`;
   }
 
   async exchangeCode(code: string): Promise<MLTokenResponse> {

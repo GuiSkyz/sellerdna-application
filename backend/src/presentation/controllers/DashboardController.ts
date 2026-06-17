@@ -10,7 +10,7 @@ export class DashboardController {
 
   async getMetrics(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const userId = 'user-123'; // Mock auth context
+      const userId = (request as any).user.id;
       const metrics = await this.getDashboardMetricsUseCase.execute(userId);
       
       return reply.send(metrics);
