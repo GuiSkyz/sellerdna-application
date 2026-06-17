@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Sparkles, Loader2, Save, ExternalLink, ChevronRight, Star, Heart, Check, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
-export default function GenerateAdPage({ params }: { params: { id: string } }) {
+export default function GenerateAdPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -27,7 +28,7 @@ export default function GenerateAdPage({ params }: { params: { id: string } }) {
     async function fetchProduct() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await authenticatedFetch(`${apiUrl}/api/products/${params.id}`);
+        const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}`);
         if (!res.ok) throw new Error('Falha ao carregar produto');
         const data = await res.json();
         
@@ -40,14 +41,14 @@ export default function GenerateAdPage({ params }: { params: { id: string } }) {
       }
     }
     fetchProduct();
-  }, [params.id]);
+  }, [unwrappedParams.id]);
 
   const generateWithAI = async () => {
     setGenerating(true);
     setError(null);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-      const res = await authenticatedFetch(`${apiUrl}/api/products/${params.id}/generate-ad-copy`, {
+      const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}/generate-ad-copy`, {
         method: 'POST'
       });
       

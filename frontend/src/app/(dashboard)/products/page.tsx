@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink, Trash2 } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink, Trash2, Edit } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Product {
@@ -228,14 +228,8 @@ export default function ProductsPage() {
                         className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip"
                         title="Editar Produto"
                       >
-                        <Search className="w-4 h-4" /> {/* TODO: usar ícone de Edit */}
+                        <Edit className="w-4 h-4" />
                       </Link>
-                      <button 
-                        className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors tooltip"
-                        title="Ver Detalhes"
-                      >
-                        <Search className="w-4 h-4" />
-                      </button>
                       <button 
                         onClick={() => handleDelete(product.id)}
                         className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors tooltip"

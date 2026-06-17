@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Loader2, Package, Tag, Box, Palette } from 'lucide-react';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
-export default function EditProductPage({ params }: { params: { id: string } }) {
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,7 +34,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     async function fetchProduct() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await authenticatedFetch(`${apiUrl}/api/products/${params.id}`);
+        const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}`);
         if (!res.ok) throw new Error('Falha ao carregar produto');
         const data = await res.json();
         
@@ -59,7 +60,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       }
     }
     fetchProduct();
-  }, [params.id]);
+  }, [unwrappedParams.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -84,7 +85,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         payload.expirationDate = '';
       }
 
-      const res = await authenticatedFetch(`${apiUrl}/api/products/${params.id}`, {
+      const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
