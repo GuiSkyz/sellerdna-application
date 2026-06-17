@@ -8,13 +8,21 @@ export function ConnectMLButton() {
   const handleConnect = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'}/api/ml/auth-url`);
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'}/api/ml/auth-url`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        }
+      });
       const data = await response.json();
       
-      if (data.url) {
+      if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        alert('Erro ao obter a URL de autenticação do Mercado Livre');
+        alert(data.error || 'Erro ao obter a URL de autenticação do Mercado Livre');
       }
     } catch (error) {
       console.error(error);
