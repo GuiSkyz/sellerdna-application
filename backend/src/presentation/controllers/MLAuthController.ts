@@ -169,14 +169,14 @@ export class MLAuthController {
   }
 
   // Mantemos o exchangeToken antigo caso o Frontend precise fazer a troca via POST
-  async exchangeToken(request: FastifyRequest<{ Body: { code: string } }>, reply: FastifyReply) {
+  async exchangeToken(request: FastifyRequest<{ Body: { code: string; code_verifier?: string } }>, reply: FastifyReply) {
     try {
-      const { code } = request.body;
+      const { code, code_verifier } = request.body;
       if (!code) {
         return reply.status(400).send({ error: 'O código de autorização é obrigatório' });
       }
 
-      const tokenData = await this.mlAuthService.exchangeCode(code);
+      const tokenData = await this.mlAuthService.exchangeCode(code, code_verifier || '');
       return reply.send({ message: 'Conta conectada com sucesso', tokens: tokenData });
     } catch (error) {
       request.log.error(error);
