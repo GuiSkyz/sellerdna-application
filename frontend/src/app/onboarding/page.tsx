@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSearchParams } from 'next/navigation';
+import { AlertCircle, Store } from 'lucide-react';
 
 export default function OnboardingPage() {
   const [loading, setLoading] = useState(true);
