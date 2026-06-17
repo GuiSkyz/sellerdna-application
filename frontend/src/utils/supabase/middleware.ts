@@ -42,17 +42,46 @@ export async function updateSession(request: NextRequest) {
 
     const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup')
     const isPublicPage = request.nextUrl.pathname === '/' || isAuthPage || request.nextUrl.pathname.startsWith('/api')
+    const isOnboarding = request.nextUrl.pathname.startsWith('/onboarding')
 
-    if (!user && !isPublicPage) {
+    // Not logged in and trying to access protected page → login
+    if (!user && !isPublicPage && !isOnboarding) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
 
+    // Logged in and on auth page → check ML account
     if (user && isAuthPage) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
+    }
+
+    // For logged-in users on protected pages (not onboarding), check ML account
+    if (user && !isPublicPage) {
+      const { data: mlAccount, error } = await supabase
+        .from('mercadolivre_accounts')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle()
+
+      const hasMLAccount = !!mlAccount && !error
+
+      // User is on onboarding but already has ML account → dashboard
+      if (isOnboarding && hasMLAccount) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
+
+      // User is NOT on onboarding and does NOT have ML account → onboarding
+      if (!isOnboarding && !hasMLAccount) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/onboarding'
+        return NextResponse.redirect(url)
+      }
     }
 
     return supabaseResponse;
@@ -62,3 +91,4 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 }
+
