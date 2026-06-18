@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react';
-import { authenticatedFetch } from '@/utils/authenticatedFetch';
-
-import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { UploadCloud, CheckCircle2 } from 'lucide-react';
+import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
 
 function SettingsContent() {
