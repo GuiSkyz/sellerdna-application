@@ -33,25 +33,34 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}`);
-        if (!res.ok) throw new Error('Falha ao carregar produto');
-        const data = await res.json();
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', unwrappedParams.id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (error || !data) throw new Error('Falha ao carregar produto');
         
         setFormData({
           name: data.name || '',
-          productType: data.productType || 'Perfume',
+          productType: data.product_type || 'Perfume',
           brand: data.brand || '',
           price: data.price || 0,
           quantity: data.quantity || 0,
           sku: data.sku || '',
           ncm: data.ncm || '',
           weight: data.weight || 0,
-          imageUrl: data.imageUrl || '',
-          sizeMl: data.sizeMl || '',
-          perfumeType: data.perfumeType || '',
+          imageUrl: data.image_url || '',
+          sizeMl: data.size_ml || '',
+          perfumeType: data.perfume_type || '',
           gender: data.gender || '',
-          expirationDate: data.expirationDate || ''
+          expirationDate: data.expiration_date || ''
         });
       } catch (err: any) {
         setError(err.message);

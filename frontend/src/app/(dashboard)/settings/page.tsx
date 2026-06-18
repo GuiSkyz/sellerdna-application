@@ -27,12 +27,18 @@ function SettingsContent() {
   useEffect(() => {
     async function fetchAccounts() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await authenticatedFetch(`${apiUrl}/api/ml/accounts`);
-        if (res.ok) {
-          const data = await res.json();
-          setAccounts(data);
-        }
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('mercadolivre_accounts')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+        setAccounts(data || []);
       } catch (err) {
         console.error('Erro ao buscar contas:', err);
       }

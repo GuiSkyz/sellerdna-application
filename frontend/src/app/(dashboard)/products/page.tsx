@@ -31,11 +31,33 @@ export default function ProductsPage() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await authenticatedFetch(`${apiUrl}/api/products`);
-        if (!res.ok) throw new Error('Erro ao buscar produtos');
-        const data = await res.json();
-        setProducts(data);
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const mappedData = data.map(d => ({
+          id: d.id,
+          name: d.name,
+          productType: d.product_type,
+          brand: d.brand,
+          price: Number(d.price),
+          quantity: Number(d.quantity),
+          imageUrl: d.image_url,
+          sku: d.sku,
+          customId: d.custom_id,
+          ncm: d.ncm,
+        }));
+        
+        setProducts(mappedData);
       } catch (err) {
         console.error('Failed to fetch products', err);
       } finally {
