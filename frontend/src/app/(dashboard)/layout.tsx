@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/layout/Sidebar";
+import { DashboardLayoutWrapper } from "@/components/layout/DashboardLayoutWrapper";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -27,11 +27,8 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-full bg-[#f8fafc] text-zinc-900 font-sans flex">
-      <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <DashboardLayoutWrapper>
+      {children}
+    </DashboardLayoutWrapper>
   );
 }

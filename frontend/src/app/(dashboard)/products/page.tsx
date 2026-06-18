@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink, Trash2, Edit, Package } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Product {
@@ -76,7 +76,6 @@ export default function ProductsPage() {
   );
 
   const toggleSelectAll = () => {
-    // Selects only the ones currently visible if they aren't all selected
     const visibleIds = paginatedProducts.map(p => p.id);
     const allVisibleSelected = visibleIds.every(id => selectedIds.includes(id));
     
@@ -134,20 +133,20 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Meus Produtos</h1>
-          <p className="text-sm text-zinc-500 mt-1">Gerencie os produtos importados da sua planilha.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Meus Produtos</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie os produtos importados da sua planilha.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {selectedIds.length > 0 && (
             <>
               <button 
@@ -156,7 +155,6 @@ export default function ProductsPage() {
                   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
                   let imported = 0;
                   
-                  // Executa importação um por um (MVP)
                   for (const id of selectedIds) {
                     try {
                       await authenticatedFetch(`${apiUrl}/api/gdrive/import-photos`, {
@@ -172,7 +170,7 @@ export default function ProductsPage() {
                   alert(`Importação finalizada! ${imported} fotos importadas com sucesso.`);
                   window.location.reload();
                 }}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-blue-200/50"
+                className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-md text-sm font-medium transition-colors border border-primary/20 flex items-center gap-2"
               >
                 <UploadCloud className="w-4 h-4" />
                 Buscar Fotos (Drive)
@@ -180,7 +178,7 @@ export default function ProductsPage() {
               <button 
                 onClick={handleBulkDelete}
                 disabled={isDeleting}
-                className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-rose-200/50"
+                className="bg-destructive/10 hover:bg-destructive/20 text-destructive px-4 py-2 rounded-md text-sm font-medium transition-colors border border-destructive/20 flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 {isDeleting ? 'Excluindo...' : `Excluir (${selectedIds.length})`}
@@ -189,26 +187,26 @@ export default function ProductsPage() {
           )}
           <Link 
             href="/products/create"
-            className="bg-white hover:bg-zinc-50 text-zinc-700 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-zinc-200"
+            className="bg-card hover:bg-muted text-foreground px-4 py-2 rounded-md text-sm font-medium transition-colors border border-border flex items-center gap-2"
           >
             <Package className="w-4 h-4" />
             Novo Produto
           </Link>
           <Link 
             href="/products/import"
-            className="bg-zinc-900 hover:bg-zinc-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
           >
             <UploadCloud className="w-4 h-4" />
-            Importar Mais
+            Importar
           </Link>
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
         {/* Toolbar */}
-        <div className="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-          <div className="relative w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+        <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input 
               type="text" 
               placeholder="Buscar por nome ou SKU..." 
@@ -217,10 +215,10 @@ export default function ProductsPage() {
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-all"
             />
           </div>
-          <div className="text-sm text-zinc-500 font-medium">
+          <div className="text-sm text-muted-foreground font-medium">
             {filteredProducts.length} produtos
           </div>
         </div>
@@ -229,72 +227,72 @@ export default function ProductsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-zinc-50/50 border-b border-zinc-100">
+              <tr className="bg-muted/50 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 <th className="px-6 py-4 w-12 text-center">
                   <input 
                     type="checkbox" 
                     checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedIds.includes(p.id))}
                     onChange={toggleSelectAll}
-                    className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    className="rounded border-border bg-background text-primary focus:ring-primary cursor-pointer h-4 w-4"
                   />
                 </th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">CUST ID</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">Produto</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">SKU</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">Preço (R$)</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">Estoque</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">NCM</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center whitespace-nowrap">Anúncios ML</th>
-                <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider text-right whitespace-nowrap">Ações</th>
+                <th className="px-6 py-4 whitespace-nowrap">CUST ID</th>
+                <th className="px-6 py-4 whitespace-nowrap">Produto</th>
+                <th className="px-6 py-4 whitespace-nowrap">SKU</th>
+                <th className="px-6 py-4 whitespace-nowrap">Preço</th>
+                <th className="px-6 py-4 whitespace-nowrap">Estoque</th>
+                <th className="px-6 py-4 whitespace-nowrap">NCM</th>
+                <th className="px-6 py-4 text-center whitespace-nowrap">Anúncios ML</th>
+                <th className="px-6 py-4 text-right whitespace-nowrap">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-border">
               {paginatedProducts.map((product) => (
-                <tr key={product.id} className={`hover:bg-zinc-50/50 transition-colors group ${selectedIds.includes(product.id) ? 'bg-blue-50/30' : ''}`}>
+                <tr key={product.id} className={`hover:bg-muted/30 transition-colors group ${selectedIds.includes(product.id) ? 'bg-primary/5' : ''}`}>
                   <td className="px-6 py-4 w-12 text-center">
                     <input 
                       type="checkbox" 
                       checked={selectedIds.includes(product.id)}
                       onChange={() => toggleSelect(product.id)}
-                      className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="rounded border-border bg-background text-primary focus:ring-primary cursor-pointer h-4 w-4"
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 font-mono">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground font-mono">
                     {product.customId || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 flex-shrink-0 bg-zinc-100 rounded-lg border border-zinc-200 flex items-center justify-center overflow-hidden">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4 min-w-[250px]">
+                      <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md border border-border flex items-center justify-center overflow-hidden">
                         {product.imageUrl ? (
                           <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <PackageSearch className="h-5 w-5 text-zinc-400" />
+                          <PackageSearch className="h-5 w-5 text-muted-foreground/50" />
                         )}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors">{product.name}</span>
-                        <span className="text-xs text-zinc-500 mt-0.5">{product.brand}</span>
+                        <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">{product.name}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">{product.brand}</span>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 bg-zinc-100 text-zinc-600 rounded-md text-xs font-medium border border-zinc-200/50">
+                    <span className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs font-medium border border-border">
                       {product.sku || '-'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                     R$ {product.price.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`text-sm font-medium ${product.quantity > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <span className={`text-sm font-medium ${product.quantity > 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                       {product.quantity} un
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                     {product.ncm || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border">
                       {product.mlListingsCount || 0}
                     </span>
                   </td>
@@ -302,22 +300,22 @@ export default function ProductsPage() {
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link
                         href={`/products/${product.id}/generate-ad`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-semibold transition-colors border border-purple-200/50"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md text-xs font-semibold transition-colors border border-primary/20"
                         title="Gerar Anúncio com IA"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        Gerar Anúncio
+                        IA
                       </Link>
                       <Link 
                         href={`/products/${product.id}/edit`}
-                        className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip"
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                         title="Editar Produto"
                       >
                         <Edit className="w-4 h-4" />
                       </Link>
                       <button 
                         onClick={() => handleDelete(product.id)}
-                        className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors tooltip"
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
                         title="Excluir Produto"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -329,10 +327,10 @@ export default function ProductsPage() {
               
               {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center">
-                    <PackageSearch className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
-                    <p className="text-zinc-500 font-medium">Nenhum produto encontrado.</p>
-                    <p className="text-sm text-zinc-400 mt-1">Faça uma importação para começar a gerenciar.</p>
+                  <td colSpan={9} className="px-6 py-16 text-center">
+                    <PackageSearch className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                    <p className="text-foreground font-medium">Nenhum produto encontrado.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Faça uma importação para começar a gerenciar seu catálogo.</p>
                   </td>
                 </tr>
               )}
@@ -342,22 +340,22 @@ export default function ProductsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-            <span className="text-sm text-zinc-500">
-              Mostrando <span className="font-medium text-zinc-900">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium text-zinc-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}</span> de <span className="font-medium text-zinc-900">{filteredProducts.length}</span> resultados
+          <div className="p-4 border-t border-border flex items-center justify-between bg-muted/30">
+            <span className="text-sm text-muted-foreground">
+              Mostrando <span className="font-medium text-foreground">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium text-foreground">{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}</span> de <span className="font-medium text-foreground">{filteredProducts.length}</span>
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 text-sm font-medium text-zinc-600 bg-white border border-zinc-200 rounded-md hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-foreground bg-background border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Anterior
               </button>
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 text-sm font-medium text-zinc-600 bg-white border border-zinc-200 rounded-md hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-foreground bg-background border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Próximo
               </button>

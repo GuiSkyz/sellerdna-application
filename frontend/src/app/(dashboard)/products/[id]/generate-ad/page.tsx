@@ -74,7 +74,6 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
       
-      // Assumes we have a POST /api/listings endpoint that takes title, desc, price, qty
       const payload = {
         productId: productData.id,
         title: formData.title,
@@ -104,8 +103,8 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
       </div>
     );
   }
@@ -113,29 +112,29 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
   const titleLength = formData.title.length;
 
   return (
-    <div className="max-w-7xl mx-auto pb-12">
+    <div className="max-w-7xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Link href="/products" className="p-2 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors text-zinc-600">
+          <Link href="/products" className="p-2 bg-card border border-border rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-              Gerador de Anúncio IA <Sparkles className="w-5 h-5 text-purple-600" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
+              Gerador de Anúncio IA <Sparkles className="w-5 h-5 text-purple-500" />
             </h1>
-            <p className="text-sm text-zinc-500 mt-1">Gere títulos SEO e descrições matadoras para o ML.</p>
+            <p className="text-sm text-muted-foreground mt-1">Gere títulos SEO e descrições matadoras para o ML.</p>
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm font-medium">
+        <div className="mb-6 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm font-medium">
           {error}
         </div>
       )}
       
       {successMessage && (
-        <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+        <div className="mb-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 px-4 py-3 rounded-md text-sm font-medium flex items-center gap-2">
           <Check className="w-5 h-5" />
           {successMessage}
         </div>
@@ -145,18 +144,18 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
         
         {/* LADO ESQUERDO: EDITOR E GERADOR */}
         <div className="space-y-6">
-          <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-3 opacity-10">
-              <Sparkles className="w-24 h-24" />
+          <div className="bg-card border border-border rounded-xl shadow-sm p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3 opacity-5 text-primary">
+              <Sparkles className="w-32 h-32" />
             </div>
             
-            <h2 className="text-lg font-semibold text-zinc-900 mb-2">Consultor IA</h2>
-            <p className="text-sm text-zinc-500 mb-6">Deixe nossa IA gerar uma copy otimizada e estruturada para converter mais.</p>
+            <h2 className="text-lg font-semibold text-foreground mb-2">Consultor IA</h2>
+            <p className="text-sm text-muted-foreground mb-6">Deixe nossa IA gerar uma copy otimizada e estruturada para converter mais.</p>
             
             <button 
               onClick={generateWithAI}
               disabled={generating}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-3 rounded-xl font-semibold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-70"
+              className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-4 py-3 rounded-md font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {generating ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Gerando Copy...</>
@@ -166,14 +165,14 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
             </button>
           </div>
 
-          <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-zinc-900 mb-6">Editor do Anúncio</h2>
+          <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-6">Editor do Anúncio</h2>
             
             <div className="space-y-6">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-zinc-700">Título do Anúncio (SEO)</label>
-                  <span className={`text-xs font-semibold ${titleLength > 60 ? 'text-rose-500' : 'text-zinc-500'}`}>
+                  <label className="text-sm font-medium text-foreground">Título do Anúncio (SEO)</label>
+                  <span className={`text-xs font-semibold ${titleLength > 60 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {titleLength}/60
                   </span>
                 </div>
@@ -181,42 +180,42 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   maxLength={60}
-                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-zinc-900"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-medium text-foreground"
                   placeholder="Ex: Perfume Masculino Original Lacrado 100ml"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-700">Preço Original</label>
+                  <label className="text-sm font-medium text-foreground">Preço Original</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
                     <input 
                       type="number"
                       disabled
                       value={formData.price}
-                      className="w-full pl-9 pr-4 py-2 bg-zinc-100 border border-zinc-200 rounded-lg text-sm text-zinc-500 cursor-not-allowed"
+                      className="w-full pl-9 pr-4 py-2 bg-muted/50 border border-border rounded-md text-sm text-muted-foreground cursor-not-allowed"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-700">Estoque Disp.</label>
+                  <label className="text-sm font-medium text-foreground">Estoque Disp.</label>
                   <input 
                     type="number"
                     disabled
                     value={formData.stock}
-                    className="w-full px-4 py-2 bg-zinc-100 border border-zinc-200 rounded-lg text-sm text-zinc-500 cursor-not-allowed"
+                    className="w-full px-4 py-2 bg-muted/50 border border-border rounded-md text-sm text-muted-foreground cursor-not-allowed"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700">Descrição Matadora</label>
+                <label className="text-sm font-medium text-foreground">Descrição Matadora</label>
                 <textarea 
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   rows={15}
-                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono leading-relaxed resize-y"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono leading-relaxed resize-y text-foreground"
                   placeholder="A descrição aparecerá aqui..."
                 />
               </div>
@@ -224,7 +223,7 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
               <button 
                 onClick={handlePublish}
                 disabled={publishing || !formData.title || !formData.description}
-                className="w-full bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-3 rounded-xl font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-3 rounded-md font-semibold transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {publishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                 Publicar no Mercado Livre
@@ -236,11 +235,12 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
         {/* LADO DIREITO: PREVIEW MERCADO LIVRE */}
         <div>
           <div className="sticky top-8">
-            <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <ExternalLink className="w-5 h-5 text-yellow-500" />
               Preview no Mercado Livre
             </h2>
             
+            {/* ML Preview is inherently light-themed to mimic the actual website */}
             <div className="w-[360px] max-w-full mx-auto bg-white rounded-[2rem] border-8 border-zinc-900 overflow-hidden shadow-2xl relative h-[700px] flex flex-col">
               {/* Header do app ML fake */}
               <div className="bg-[#FFE600] p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">

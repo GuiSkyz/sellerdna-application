@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { UploadCloud, CheckCircle2 } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
 
@@ -81,68 +81,66 @@ function SettingsContent() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="mb-8 border-b pb-4">
-        <h1 className="text-3xl font-bold tracking-tight">Configurações e Integrações</h1>
-        <p className="text-zinc-500 mt-2">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="mb-8 border-b border-border pb-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Configurações e Integrações</h1>
+        <p className="text-muted-foreground mt-2 text-sm">
           Gerencie suas conexões com marketplaces e armazenamento em nuvem.
         </p>
       </div>
 
       {successMsg && (
-        <div className="bg-emerald-500/10 border border-emerald-500/50 text-emerald-500 px-4 py-3 rounded-lg flex items-center gap-3">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 px-4 py-3 rounded-md flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5" />
           <p className="text-sm font-medium">{successMsg}</p>
         </div>
       )}
 
       {errorMsg && (
-        <div className="bg-rose-500/10 border border-rose-500/50 text-rose-500 px-4 py-3 rounded-lg flex items-center gap-3">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md flex items-center gap-3">
+          <AlertCircle className="w-5 h-5" />
           <p className="text-sm font-medium">{errorMsg}</p>
         </div>
       )}
 
       <div className="space-y-6">
         {/* Integração Mercado Livre */}
-        <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50/50">
-            <h2 className="text-lg font-medium text-zinc-900">Integrações do Mercado Livre</h2>
-            <p className="text-sm text-zinc-500 mt-1">Conecte suas contas para sincronizar produtos automaticamente.</p>
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-border bg-muted/30">
+            <h2 className="text-base font-semibold text-foreground">Integrações do Mercado Livre</h2>
+            <p className="text-sm text-muted-foreground mt-1">Conecte suas contas para sincronizar produtos automaticamente.</p>
           </div>
           <div className="p-6 space-y-4">
             {accounts.map(acc => (
-              <div key={acc.id} className="flex items-center justify-between p-4 border border-zinc-200 rounded-lg bg-white">
+              <div key={acc.id} className="flex items-center justify-between p-4 border border-border rounded-xl bg-background">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center shadow-sm">
                     <span className="font-bold text-blue-900 text-lg">ML</span>
                   </div>
                   <div>
-                    <h3 className="text-zinc-900 font-semibold">{acc.nickname}</h3>
-                    <p className="text-xs text-zinc-500">ID: {acc.ml_user_id}</p>
+                    <h3 className="text-foreground font-semibold">{acc.nickname}</h3>
+                    <p className="text-xs text-muted-foreground">ID: {acc.ml_user_id}</p>
                   </div>
                 </div>
                 <div>
-                  <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-medium">
+                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-md text-xs font-semibold">
                     Conectado
                   </span>
                 </div>
               </div>
             ))}
 
-            <div className="flex items-center justify-between p-4 border border-zinc-200 rounded-lg bg-zinc-50/50 border-dashed">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border border-border rounded-xl bg-muted/10 border-dashed">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center">
-                  <span className="font-bold text-zinc-500 text-sm">ML</span>
+                <div className="w-10 h-10 bg-muted border border-border rounded-full flex items-center justify-center">
+                  <span className="font-bold text-muted-foreground text-xs">ML</span>
                 </div>
                 <div>
-                  <h3 className="text-zinc-900 font-medium">Adicionar Nova Conta</h3>
-                  <p className="text-sm text-zinc-500">Conecte mais uma conta do Mercado Livre</p>
+                  <h3 className="text-foreground font-medium text-sm">Adicionar Nova Conta</h3>
+                  <p className="text-xs text-muted-foreground">Conecte mais uma conta do Mercado Livre</p>
                 </div>
               </div>
-              <div>
+              <div className="shrink-0 w-full sm:w-auto">
                 <ConnectMLButton />
               </div>
             </div>
@@ -150,42 +148,44 @@ function SettingsContent() {
         </div>
 
         {/* Integração Google Drive */}
-        <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                <UploadCloud className="w-6 h-6 text-blue-600" />
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                <UploadCloud className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-zinc-900">Google Drive</h3>
-                <p className="text-sm text-zinc-500 max-w-lg mt-1">
+                <h3 className="text-base font-semibold text-foreground">Google Drive</h3>
+                <p className="text-sm text-muted-foreground max-w-lg mt-1 leading-relaxed">
                   Conecte sua conta do Google Drive para permitir que o SellerDNA importe em lote todas as fotos dos seus produtos de forma automatizada.
                 </p>
               </div>
             </div>
-            {googleAccounts.length > 0 ? (
-              <div className="flex flex-col items-end gap-2">
-                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-medium flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Conectado
-                </span>
+            <div className="shrink-0">
+              {googleAccounts.length > 0 ? (
+                <div className="flex flex-col items-end gap-2">
+                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-md text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Conectado
+                  </span>
+                  <button
+                    onClick={handleConnectGoogle}
+                    disabled={loading}
+                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    {loading ? 'Aguarde...' : 'Reconectar'}
+                  </button>
+                </div>
+              ) : (
                 <button
                   onClick={handleConnectGoogle}
                   disabled={loading}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md transition-colors flex items-center gap-2"
                 >
-                  {loading ? 'Redirecionando...' : 'Reconectar'}
+                  {loading ? 'Redirecionando...' : 'Conectar Conta'}
                 </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleConnectGoogle}
-                disabled={loading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 h-fit"
-              >
-                {loading ? 'Redirecionando...' : 'Conectar Conta'}
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -196,8 +196,8 @@ function SettingsContent() {
 export default function SettingsPage() {
   return (
     <Suspense fallback={
-      <div className="flex h-64 items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     }>
       <SettingsContent />

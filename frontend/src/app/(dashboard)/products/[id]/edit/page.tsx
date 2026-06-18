@@ -27,7 +27,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     ncm: '',
     weight: 0,
     imageUrl: '',
-    // Perfume specific:
     sizeMl: '',
     perfumeType: '',
     gender: '',
@@ -123,8 +122,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
       </div>
     );
   }
@@ -132,92 +131,93 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const isPerfume = formData.productType === 'Perfume';
 
   return (
-    <div className="max-w-4xl mx-auto pb-12">
+    <div className="max-w-4xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Link href="/products" className="p-2 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors text-zinc-600">
+          <Link href="/products" className="p-2 bg-card border border-border rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Editar Produto</h1>
-            <p className="text-sm text-zinc-500 mt-1">Modifique os atributos do produto no sistema</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Editar Produto</h1>
+            <p className="text-sm text-muted-foreground mt-1">Modifique os atributos do produto no sistema</p>
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm font-medium">
+        <div className="mb-6 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm font-medium">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-blue-500" />
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Package className="w-5 h-5 text-primary" />
             Informações Principais
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Nome do Produto *</label>
+              <label className="text-sm font-medium text-foreground">Nome do Produto *</label>
               <input 
                 required
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Tipo de Produto *</label>
+              <label className="text-sm font-medium text-foreground">Tipo de Produto *</label>
               <select 
                 required
                 name="productType"
                 value={formData.productType}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground"
               >
                 <option value="Perfume">Perfume / Cosmético</option>
                 <option value="Outro">Outro Produto Geral</option>
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Marca</label>
+              <label className="text-sm font-medium text-foreground">Marca</label>
               <input 
                 name="brand"
                 value={formData.brand}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground"
               />
             </div>
           </div>
         </div>
 
         {isPerfume && (
-          <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm p-6 border-l-4 border-l-purple-500">
-            <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-purple-500/50"></div>
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Palette className="w-5 h-5 text-purple-500" />
               Atributos de Perfume
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700">Tamanho (ML)</label>
+                <label className="text-sm font-medium text-foreground">Tamanho (ML)</label>
                 <input 
                   name="sizeMl"
                   value={formData.sizeMl}
                   onChange={handleChange}
                   placeholder="Ex: 100ml"
-                  className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700">Gênero</label>
+                <label className="text-sm font-medium text-foreground">Gênero</label>
                 <select 
                   name="gender"
                   value={formData.gender}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
                 >
                   <option value="">Selecione...</option>
                   <option value="Masculino">Masculino</option>
@@ -226,37 +226,37 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700">Tipo de Perfume</label>
+                <label className="text-sm font-medium text-foreground">Tipo de Perfume</label>
                 <input 
                   name="perfumeType"
                   value={formData.perfumeType}
                   onChange={handleChange}
                   placeholder="Ex: Eau de Parfum"
-                  className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700">Validade</label>
+                <label className="text-sm font-medium text-foreground">Validade</label>
                 <input 
                   name="expirationDate"
                   type="date"
                   value={formData.expirationDate}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
                 />
               </div>
             </div>
           </div>
         )}
 
-        <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Tag className="w-5 h-5 text-emerald-500" />
             Preço e Estoque
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Preço de Venda (R$) *</label>
+              <label className="text-sm font-medium text-foreground">Preço de Venda (R$) *</label>
               <input 
                 required
                 type="number"
@@ -265,11 +265,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 name="price"
                 value={formData.price}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-foreground"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Quantidade em Estoque *</label>
+              <label className="text-sm font-medium text-foreground">Quantidade em Estoque *</label>
               <input 
                 required
                 type="number"
@@ -277,26 +277,26 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 name="quantity"
                 value={formData.quantity}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-foreground"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200/60 rounded-2xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Box className="w-5 h-5 text-amber-500" />
             Logística e Identificação
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">SKU (Código)</label>
+              <label className="text-sm font-medium text-foreground">SKU (Código)</label>
               <div className="flex items-center gap-2">
                 <input 
                   name="sku"
                   value={formData.sku}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all text-foreground"
                 />
                 <button
                   type="button"
@@ -311,7 +311,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     
                     setFormData(prev => ({ ...prev, sku: generatedSku.toUpperCase() }));
                   }}
-                  className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-lg text-xs font-semibold border border-zinc-200 transition-colors whitespace-nowrap"
+                  className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md text-xs font-semibold transition-colors whitespace-nowrap"
                   title="Gerar SKU com base no Título"
                 >
                   Gerar Automático
@@ -319,16 +319,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">NCM</label>
+              <label className="text-sm font-medium text-foreground">NCM</label>
               <input 
                 name="ncm"
                 value={formData.ncm}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all text-foreground"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Peso (kg)</label>
+              <label className="text-sm font-medium text-foreground">Peso (kg)</label>
               <input 
                 type="number"
                 step="0.01"
@@ -336,7 +336,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 name="weight"
                 value={formData.weight}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all text-foreground"
               />
             </div>
           </div>
@@ -345,14 +345,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center justify-end gap-4 pt-4">
           <Link 
             href="/products"
-            className="px-6 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"
+            className="px-6 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
           >
             Cancelar
           </Link>
           <button 
             type="submit"
             disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 rounded-md font-medium transition-all shadow-sm flex items-center gap-2 disabled:opacity-50 text-sm"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             Salvar Alterações
