@@ -12,7 +12,8 @@ function SettingsContent() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [googleAccounts, setGoogleAccounts] = useState<any[]>([]);
+  const [driveFolderId, setDriveFolderId] = useState('');
+  const [savingDrive, setSavingDrive] = useState(false);
 
   useEffect(() => {
     const isConnected = searchParams.get('ml_connected');
@@ -22,7 +23,7 @@ function SettingsContent() {
     if (isConnected === 'true') {
       setSuccessMsg('Sua conta do Mercado Livre foi conectada com sucesso!');
     } else if (isGdriveConnected === 'success') {
-      setSuccessMsg('Sua conta do Google Drive foi conectada com sucesso!');
+      setSuccessMsg('Configurações do Google Drive salvas com sucesso!');
     } else if (isConnected === 'false' || hasError) {
       setErrorMsg('Não foi possível conectar a conta. Tente novamente.');
     }
@@ -44,15 +45,14 @@ function SettingsContent() {
         if (mlError) throw mlError;
         setAccounts(mlData || []);
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const gdriveRes = await authenticatedFetch(`${apiUrl}/api/gdrive/status`);
-        if (gdriveRes.ok) {
-          const gdriveData = await gdriveRes.json();
-          if (gdriveData.connected) {
-            setGoogleAccounts([gdriveData]);
-          } else {
-            setGoogleAccounts([]);
-          }
+        const { data: userRecord, error: userError } = await supabase
+          .from('users')
+          .select('drive_folder_id')
+          .eq('id', user.id)
+          .single();
+          
+        if (userRecord?.drive_folder_id) {
+          setDriveFolderId(userRecord.drive_folder_id);
         }
       } catch (err) {
         console.error('Erro ao buscar contas:', err);
@@ -61,22 +61,24 @@ function SettingsContent() {
     fetchAccounts();
   }, []);
 
-  const handleConnectGoogle = async () => {
+  const handleSaveDriveFolder = async () => {
     try {
-      setLoading(true);
+      setSavingDrive(true);
+      setErrorMsg('');
+      setSuccessMsg('');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-      const res = await authenticatedFetch(`${apiUrl}/api/gdrive/auth`);
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No URL returned');
-      }
+      const res = await authenticatedFetch(`${apiUrl}/api/gdrive/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: driveFolderId })
+      });
+      if (!res.ok) throw new Error('Falha ao salvar');
+      setSuccessMsg('Pasta do Google Drive configurada com sucesso!');
     } catch (err) {
       console.error(err);
-      alert('Failed to connect to Google Drive');
+      setErrorMsg('Falha ao salvar a pasta do Google Drive.');
     } finally {
-      setLoading(false);
+      setSavingDrive(false);
     }
   };
 
@@ -149,42 +151,39 @@ function SettingsContent() {
 
         {/* Integração Google Drive */}
         <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="flex items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-6">
+            <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                 <UploadCloud className="w-6 h-6 text-primary" />
               </div>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">Google Drive</h3>
-                <p className="text-sm text-muted-foreground max-w-lg mt-1 leading-relaxed">
-                  Conecte sua conta do Google Drive para permitir que o SellerDNA importe em lote todas as fotos dos seus produtos de forma automatizada.
+              <div className="space-y-3 flex-1 max-w-2xl">
+                <h3 className="text-base font-semibold text-foreground">Google Drive (Integração de Fotos Automática)</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Para que o SellerDNA consiga importar automaticamente as fotos dos seus perfumes do Google Drive, siga os passos abaixo:
                 </p>
-              </div>
-            </div>
-            <div className="shrink-0">
-              {googleAccounts.length > 0 ? (
-                <div className="flex flex-col items-end gap-2">
-                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-md text-xs font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Conectado
-                  </span>
+                <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
+                  <li>Crie uma pasta no seu Google Drive (ex: "BD Cosméticos").</li>
+                  <li>Compartilhe essa pasta com o nosso robô: <span className="font-semibold text-primary select-all">drivephotos@mystic-producer-485015-j6.iam.gserviceaccount.com</span> (Acesso de Leitor).</li>
+                  <li>Cole o link ou ID dessa pasta no campo abaixo.</li>
+                </ol>
+                
+                <div className="flex gap-3 pt-2">
+                  <input
+                    type="text"
+                    value={driveFolderId}
+                    onChange={(e) => setDriveFolderId(e.target.value)}
+                    placeholder="Cole o ID ou link da pasta aqui..."
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
                   <button
-                    onClick={handleConnectGoogle}
-                    disabled={loading}
-                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                    onClick={handleSaveDriveFolder}
+                    disabled={savingDrive}
+                    className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md transition-colors whitespace-nowrap"
                   >
-                    {loading ? 'Aguarde...' : 'Reconectar'}
+                    {savingDrive ? 'Salvando...' : 'Salvar Pasta'}
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={handleConnectGoogle}
-                  disabled={loading}
-                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md transition-colors flex items-center gap-2"
-                >
-                  {loading ? 'Redirecionando...' : 'Conectar Conta'}
-                </button>
-              )}
+              </div>
             </div>
           </div>
         </div>

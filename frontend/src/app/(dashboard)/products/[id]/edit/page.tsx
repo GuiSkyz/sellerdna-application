@@ -28,6 +28,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     ncm: '',
     weight: 0,
     imageUrl: '',
+    imageUrls: [] as string[],
     sizeMl: '',
     perfumeType: '',
     gender: '',
@@ -70,6 +71,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           ncm: data.ncm || '',
           weight: data.weight || 0,
           imageUrl: data.image_url || '',
+          imageUrls: data.image_urls || [],
           sizeMl: data.size_ml || '',
           perfumeType: data.perfume_type || '',
           gender: data.gender || '',
@@ -134,6 +136,30 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     } catch (err: any) {
       setError(err.message);
       setSaving(false);
+    }
+  };
+
+  const [fetchingDrive, setFetchingDrive] = useState(false);
+  const handleFetchDriveImages = async () => {
+    if (!unwrappedParams?.id) return;
+    setFetchingDrive(true);
+    setError(null);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/gdrive/fetch-images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: unwrappedParams.id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Falha ao buscar imagens no Google Drive');
+      
+      setFormData(prev => ({ ...prev, imageUrls: data.imageUrls }));
+      alert(`Foram encontradas e vinculadas ${data.imageUrls.length} fotos! Salve as alterações para confirmar.`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setFetchingDrive(false);
     }
   };
 
@@ -297,6 +323,48 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-foreground"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Fotos / Google Drive */}
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50"></div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7 15l4.5-9 4.5 9H7zm10.5 1l3 6H4.5l3-6h10.5z" />
+              </svg>
+              Fotos do Produto (Google Drive)
+            </h2>
+            <button
+              type="button"
+              onClick={handleFetchDriveImages}
+              disabled={fetchingDrive}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {fetchingDrive ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {fetchingDrive ? 'Buscando...' : 'Buscar Fotos na Pasta'}
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Para publicar, o Mercado Livre exige no mínimo 4 fotos para essa categoria. Clique no botão acima para o sistema buscar automaticamente as fotos do perfume <strong>{formData.name}</strong> no seu Google Drive.
+            </p>
+            
+            {formData.imageUrls && formData.imageUrls.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 mt-4">
+                {formData.imageUrls.map((url, i) => (
+                  <div key={i} className="relative aspect-square rounded-md overflow-hidden border border-border bg-muted flex items-center justify-center">
+                    <img src={url} alt={`Foto ${i+1}`} className="object-cover w-full h-full" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 border-2 border-dashed border-border rounded-xl text-center flex flex-col items-center justify-center">
+                <p className="text-muted-foreground text-sm">Nenhuma foto vinculada ainda.</p>
+              </div>
+            )}
           </div>
         </div>
 

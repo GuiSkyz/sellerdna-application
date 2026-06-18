@@ -15,6 +15,7 @@ export interface Product {
   ncm?: string;
   sku?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   condition?: string;
   listingTypeId?: string;
   gtin?: string;

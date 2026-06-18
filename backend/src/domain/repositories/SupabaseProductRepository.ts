@@ -21,6 +21,7 @@ export class SupabaseProductRepository {
         ncm: p.ncm,
         sku: p.sku,
         image_url: p.imageUrl,
+        image_urls: p.imageUrls,
         condition: p.condition,
         listing_type_id: p.listingTypeId,
         gtin: p.gtin,
@@ -66,6 +67,7 @@ export class SupabaseProductRepository {
       ncm: row.ncm,
       sku: row.sku,
       imageUrl: row.image_url,
+      imageUrls: row.image_urls,
       condition: row.condition,
       listingTypeId: row.listing_type_id,
       gtin: row.gtin,
@@ -104,6 +106,7 @@ export class SupabaseProductRepository {
       ncm: data.ncm,
       sku: data.sku,
       imageUrl: data.image_url,
+      imageUrls: data.image_urls,
       condition: data.condition,
       listingTypeId: data.listing_type_id,
       gtin: data.gtin,
@@ -130,6 +133,7 @@ export class SupabaseProductRepository {
     if (updateData.ncm !== undefined) mapToSnakeCase.ncm = updateData.ncm;
     if (updateData.sku !== undefined) mapToSnakeCase.sku = updateData.sku;
     if (updateData.imageUrl !== undefined) mapToSnakeCase.image_url = updateData.imageUrl;
+    if (updateData.imageUrls !== undefined) mapToSnakeCase.image_urls = updateData.imageUrls;
     if (updateData.condition !== undefined) mapToSnakeCase.condition = updateData.condition;
     if (updateData.listingTypeId !== undefined) mapToSnakeCase.listing_type_id = updateData.listingTypeId;
     if (updateData.gtin !== undefined) mapToSnakeCase.gtin = updateData.gtin;
@@ -194,6 +198,7 @@ export class SupabaseProductRepository {
       ncm: productData.ncm,
       sku: productData.sku,
       image_url: productData.imageUrl,
+      image_urls: productData.imageUrls,
     };
 
     const response = await supabase
@@ -227,6 +232,7 @@ export class SupabaseProductRepository {
       ncm: data.ncm,
       sku: data.sku,
       imageUrl: data.image_url,
+      imageUrls: data.image_urls,
       createdAt: new Date(data.created_at)
     };
   }

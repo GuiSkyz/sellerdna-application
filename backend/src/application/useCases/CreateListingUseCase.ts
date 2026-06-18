@@ -57,7 +57,31 @@ export class CreateListingUseCase {
       }
     }
 
+    // Helper function to format image URL (handles Google Drive links)
+    const formatImageUrl = (url: string) => {
+      let fileId = null;
+      if (url.includes('drive.google.com/file/d/')) {
+        const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (match) fileId = match[1];
+      } else if (url.includes('drive.google.com/open?id=')) {
+        const match = url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match) fileId = match[1];
+      }
+      
+      if (fileId) {
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+      }
+      return url;
+    };
+
     // 3. Transform Product to ML Item Format
+    let mlPictures: { source: string }[] = [];
+    if (product.imageUrls && product.imageUrls.length > 0) {
+      mlPictures = product.imageUrls.map(url => ({ source: formatImageUrl(url) }));
+    } else if (product.imageUrl) {
+      mlPictures = [{ source: formatImageUrl(product.imageUrl) }];
+    }
+
     const mlItemPayload = {
       title: title.substring(0, 60), // ML max limit
       category_id: resolvedCategoryId as string,
@@ -70,9 +94,7 @@ export class CreateListingUseCase {
       description: {
         plain_text: description
       },
-      pictures: product.imageUrl ? [
-        { source: product.imageUrl }
-      ] : [],
+      pictures: mlPictures.length > 0 ? mlPictures : [],
       attributes: attributes.length > 0 ? attributes : undefined
     };
 
