@@ -253,7 +253,7 @@ export default function ProductsPage() {
                   
                   for (const id of selectedIds) {
                     try {
-                      await authenticatedFetch(`${apiUrl}/api/gdrive/import-photos`, {
+                      await authenticatedFetch(`${apiUrl}/api/gdrive/fetch-images`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ productId: id })

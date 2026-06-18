@@ -37,9 +37,9 @@ export class FetchDriveImagesUseCase {
 
     // 3. Extract folder ID if the user pasted a full URL instead of just the ID
     let finalFolderId = driveFolderId;
-    if (driveFolderId.includes('drive.google.com/drive/folders/')) {
-      const match = driveFolderId.match(/folders\/([a-zA-Z0-9_-]+)/);
-      if (match) finalFolderId = match[1];
+    const match = driveFolderId.match(/[-\w]{25,}/);
+    if (match) {
+      finalFolderId = match[0];
     }
 
     // 4. Find the subfolder matching the product name
