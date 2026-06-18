@@ -49,6 +49,7 @@ export class GeminiService {
       2. Deve conter as palavras-chave mais buscadas e os termos de maior conversão do ML (ex: Original, Lacrado, envio rápido, se aplicável).
       3. Seja cirúrgico, focado na intenção de busca do comprador.
       4. Não adicione aspas na resposta e não passe de 60 caracteres sob nenhuma hipótese.
+      5. Use apenas informações ESTRITAMENTE reais e verdadeiras sobre o perfume. NUNCA invente volumetrias, marcas ou termos de venda falsos.
 
       Dados do produto:
       Nome: ${productName}
@@ -70,14 +71,14 @@ export class GeminiService {
       Você é um Consultor Sênior Profissional de Marketplace, atuando no Mercado Livre com estratégias avançadas de conversão.
       Sua tarefa é criar uma DESCRIÇÃO MATADORA e personalizada para o seguinte produto.
       
-      Dados que temos (use seu conhecimento para complementar o que estiver faltando, pesquisando internamente se for de uma marca conhecida):
+      Dados que temos (traga apenas informações 100% VERDADEIRAS, oficiais e reais do fabricante sobre este perfume exato. NUNCA invente volumetrias, marcas, notas olfativas falsas ou dados fictícios. Se não tiver certeza absoluta de alguma nota da pirâmide olfativa do perfume da marca ${productData.brand || ''}, não a invente de forma alguma):
       ${JSON.stringify(productData, null, 2)}
 
       A descrição deve ter OBRIGATORIAMENTE a seguinte estrutura:
       1. UM TÍTULO CHAMATIVO: (Primeira linha, em caixa alta, destacando o desejo do cliente).
       2. INTRODUÇÃO PERSUASIVA: (Breve parágrafo focando em benefícios emocionais ou resolução de dor).
       3. CARACTERÍSTICAS PRINCIPAIS: (Em formato de bullet points simples usando "-").
-      ${isPerfume ? `4. PIRÂMIDE OLFATIVA: (Busque em seu conhecimento as notas de Topo, Coração e Fundo para este perfume exato da marca ${productData.brand || ''}). Se for uma marca não reconhecida, gere uma pirâmide coerente com o tipo de perfume.` : ''}
+      ${isPerfume ? `4. PIRÂMIDE OLFATIVA: (Busque em seu conhecimento as notas REAIS de Topo, Coração e Fundo para este perfume exato da marca ${productData.brand || ''}. Se for uma marca desconhecida ou você não possuir registro real das notas oficiais, NÃO invente notas e remova esta seção da pirâmide).` : ''}
       5. COMO USAR: (Dicas práticas de aplicação/uso para melhor aproveitamento).
       6. ONDE USAR / OCASIÕES: (Em quais momentos, climas ou ocasiões este produto brilha mais).
       7. QUEBRA DE OBJEÇÕES E CHAMADA PARA AÇÃO: (Tranquilize o cliente sobre originalidade/qualidade e finalize com um CTA forte para compra imediata).
@@ -85,6 +86,7 @@ export class GeminiService {
       IMPORTANTE PARA O MERCADO LIVRE E RESTRIÇÕES:
       1. Não use formatação Markdown com asteriscos duplos (**), pois o Mercado Livre aceita apenas texto plano. Use letras maiúsculas para destacar TÍTULOS DE SEÇÕES. Use hifens (-) para criar listas.
       2. NUNCA SE APRESENTE OU INCLUA TEXTOS CONVERSACIONAIS. NÃO inicie com frases como "Aqui está a descrição", "Sou seu consultor sênior", ou "Vamos criar uma descrição". RETORNE APENAS O CONTEÚDO FINAL DA DESCRIÇÃO.
+      3. INFORMAÇÕES ESTRITAMENTE VERDADEIRAS: É estritamente proibido inventar especificações, volumetrias ou pirâmides olfativas fantasiosas. O foco total deve ser a verdade factual do produto.
     `;
 
     const result = await this.executeWithFallback(prompt, 0.8);

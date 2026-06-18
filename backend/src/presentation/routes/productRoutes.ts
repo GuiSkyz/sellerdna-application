@@ -23,4 +23,5 @@ export async function productRoutes(app: FastifyInstance) {
   app.post('/:id/generate-ad-copy', controller.generateAdCopy.bind(controller));
   app.delete('/:id', controller.delete.bind(controller));
   app.post('/bulk-delete', controller.deleteBulk.bind(controller));
+  app.post('/bulk-update', controller.updateBulk.bind(controller));
 }

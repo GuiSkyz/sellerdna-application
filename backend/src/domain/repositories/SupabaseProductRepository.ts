@@ -156,6 +156,25 @@ export class SupabaseProductRepository {
     return this.getById(id, userId);
   }
 
+  async updateManyProducts(ids: string[], userId: string, updateData: { price?: number; quantity?: number }): Promise<void> {
+    const mapToSnakeCase: any = {};
+    if (updateData.price !== undefined) mapToSnakeCase.price = updateData.price;
+    if (updateData.quantity !== undefined) mapToSnakeCase.quantity = updateData.quantity;
+
+    if (Object.keys(mapToSnakeCase).length === 0) return;
+
+    const { error } = await supabase
+      .from('products')
+      .update(mapToSnakeCase)
+      .in('id', ids)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Erro ao atualizar produtos em massa no Supabase:', error);
+      throw new Error('Falha ao atualizar produtos em massa no banco de dados.');
+    }
+  }
+
   async delete(id: string, userId: string): Promise<void> {
     const { error } = await supabase
       .from('products')

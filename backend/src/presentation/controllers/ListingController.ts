@@ -14,6 +14,7 @@ export class ListingController {
   private syncUserListingsUseCase: SyncUserListingsUseCase;
   private createListingUseCase: CreateListingUseCase;
   private duplicateListingUseCase: DuplicateListingUseCase;
+  private optimizeListingUseCase: OptimizeListingUseCase;
 
   constructor() {
     const mlApiService = new MercadoLivreApiService();
@@ -23,8 +24,8 @@ export class ListingController {
     this.syncUserListingsUseCase = new SyncUserListingsUseCase(mlApiService);
     this.createListingUseCase = new CreateListingUseCase(mlApiService, productRepository);
     
-    const optimizeUseCase = new OptimizeListingUseCase(aiService);
-    this.duplicateListingUseCase = new DuplicateListingUseCase(optimizeUseCase, this.createListingUseCase);
+    this.optimizeListingUseCase = new OptimizeListingUseCase(aiService);
+    this.duplicateListingUseCase = new DuplicateListingUseCase(this.optimizeListingUseCase, this.createListingUseCase);
   }
 
   private async getUserId(request: FastifyRequest): Promise<string> {
@@ -131,6 +132,115 @@ export class ListingController {
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Erro ao duplicar anúncio' });
+    }
+  }
+
+  async bulkPublish(request: FastifyRequest<{ Body: { productIds: string[] } }>, reply: FastifyReply) {
+    try {
+      const { productIds } = request.body;
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return reply.status(400).send({ error: 'productIds é obrigatório' });
+      }
+
+      const userId = await this.getUserId(request);
+      
+      const { data: account } = await supabase.from('mercadolivre_accounts').select('id').eq('user_id', userId).single();
+      if (!account) return reply.status(400).send({ error: 'Nenhuma conta do Mercado Livre conectada' });
+      
+      const validToken = await getValidMLToken(account.id);
+
+      // Buscar todos os produtos do banco
+      const { data: productsData, error: prodError } = await supabase
+        .from('products')
+        .select('*')
+        .in('id', productIds)
+        .eq('user_id', userId);
+
+      if (prodError || !productsData) {
+        throw new Error('Erro ao buscar produtos para publicação');
+      }
+
+      const products = productsData.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        customId: row.custom_id,
+        name: row.name,
+        productType: row.product_type,
+        brand: row.brand,
+        sizeMl: row.size_ml,
+        perfumeType: row.perfume_type,
+        price: Number(row.price),
+        quantity: Number(row.quantity),
+        gender: row.gender,
+        expirationDate: row.expiration_date,
+        weight: Number(row.weight),
+        ncm: row.ncm,
+        sku: row.sku,
+        imageUrl: row.image_url,
+        imageUrls: row.image_urls,
+        condition: row.condition,
+        listingTypeId: row.listing_type_id,
+        gtin: row.gtin,
+        warrantyType: row.warranty_type,
+        warrantyTime: row.warranty_time,
+        mlCategoryId: row.ml_category_id,
+        mlAttributes: row.ml_attributes,
+        createdAt: new Date(row.created_at)
+      }));
+
+      const results: any[] = [];
+      const chunkSize = 10;
+      
+      for (let i = 0; i < products.length; i += chunkSize) {
+        const chunk = products.slice(i, i + chunkSize);
+        
+        const chunkPromises = chunk.map(async (product) => {
+          try {
+            // 1. Gerar copy com IA
+            const copy = await this.optimizeListingUseCase.execute(product);
+            
+            // 2. Criar anúncio no ML e salvar localmente
+            const listing = await this.createListingUseCase.execute({
+              userId,
+              productId: product.id,
+              accountId: account.id,
+              accountToken: validToken,
+              title: copy.optimizedTitle,
+              description: copy.optimizedDescription,
+              price: product.price,
+              quantity: product.quantity
+            });
+            
+            return {
+              productId: product.id,
+              name: product.name,
+              success: true,
+              listingId: listing.id,
+              mlItemId: listing.mlItemId,
+              permalink: listing.permalink
+            };
+          } catch (err: any) {
+            return {
+              productId: product.id,
+              name: product.name,
+              success: false,
+              error: err.message || 'Erro desconhecido ao publicar anúncio'
+            };
+          }
+        });
+        
+        const chunkResults = await Promise.all(chunkPromises);
+        results.push(...chunkResults);
+      }
+
+      return reply.send({
+        success: true,
+        message: 'Processamento de publicação em lote concluído',
+        results
+      });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(500).send({ error: error.message || 'Erro ao publicar em lote' });
     }
   }
 }

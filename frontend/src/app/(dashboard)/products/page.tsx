@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Product {
@@ -27,6 +27,18 @@ export default function ProductsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [bulkPrice, setBulkPrice] = useState('');
+  const [bulkQuantity, setBulkQuantity] = useState('');
+  const [updatePriceChecked, setUpdatePriceChecked] = useState(false);
+  const [updateQuantityChecked, setUpdateQuantityChecked] = useState(false);
+  const [isBulkEditing, setIsBulkEditing] = useState(false);
+
+  const [isBulkPublishOpen, setIsBulkPublishOpen] = useState(false);
+  const [isBulkPublishing, setIsBulkPublishing] = useState(false);
+  const [bulkPublishProgress, setBulkPublishProgress] = useState('');
+  const [bulkPublishResults, setBulkPublishResults] = useState<any[] | null>(null);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -131,6 +143,76 @@ export default function ProductsPage() {
     }
   };
 
+  const handleBulkUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!updatePriceChecked && !updateQuantityChecked) {
+      alert('Selecione pelo menos um campo para atualizar.');
+      return;
+    }
+    
+    setIsBulkEditing(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const payload: any = { ids: selectedIds };
+      if (updatePriceChecked) payload.price = Number(bulkPrice);
+      if (updateQuantityChecked) payload.quantity = Number(bulkQuantity);
+
+      const res = await authenticatedFetch(`${apiUrl}/api/products/bulk-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Erro ao atualizar em massa');
+      
+      alert('Produtos atualizados com sucesso!');
+      setIsBulkEditOpen(false);
+      setSelectedIds([]);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('Falha ao atualizar os produtos.');
+    } finally {
+      setIsBulkEditing(false);
+    }
+  };
+
+  const handleBulkPublish = async () => {
+    if (selectedIds.length > 10) {
+      alert('Atenção: A limitação atual de lote de publicação com IA é de no máximo 10 produtos por vez para evitar instabilidades.');
+      return;
+    }
+
+    setIsBulkPublishOpen(true);
+    setIsBulkPublishing(true);
+    setBulkPublishProgress('Iniciando publicação em lote...');
+    setBulkPublishResults(null);
+    
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      
+      setBulkPublishProgress('IA gerando títulos e descrições com dados oficiais dos perfumes... (Lote de até 10 anúncios)');
+      
+      const res = await authenticatedFetch(`${apiUrl}/api/listings/bulk-publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productIds: selectedIds })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro na publicação em lote');
+      
+      setBulkPublishResults(data.results || []);
+      setBulkPublishProgress('Concluído!');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Falha na publicação em lote.');
+      setIsBulkPublishOpen(false);
+    } finally {
+      setIsBulkPublishing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -149,6 +231,20 @@ export default function ProductsPage() {
         <div className="flex flex-wrap items-center gap-3">
           {selectedIds.length > 0 && (
             <>
+              <button 
+                onClick={() => setIsBulkEditOpen(true)}
+                className="bg-secondary hover:bg-muted text-foreground px-4 py-2 rounded-md text-sm font-medium transition-colors border border-border flex items-center gap-2"
+              >
+                <Edit className="w-4 h-4" />
+                Editar em Massa
+              </button>
+              <button 
+                onClick={handleBulkPublish}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Sparkles className="w-4 h-4" />
+                Publicar com IA ({selectedIds.length})
+              </button>
               <button 
                 onClick={async () => {
                   if (!confirm(`Sincronizar fotos para ${selectedIds.length} produtos via Google Drive?`)) return;
@@ -363,6 +459,166 @@ export default function ProductsPage() {
           </div>
         )}
       </div>
+
+      {/* Modal Edição em Massa */}
+      {isBulkEditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+              <Edit className="w-5 h-5 text-primary" />
+              Edição em Massa ({selectedIds.length} selecionados)
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Selecione quais campos deseja alterar em todos os produtos marcados. Os campos não marcados permanecerão inalterados.
+            </p>
+            
+            <form onSubmit={handleBulkUpdate} className="space-y-6">
+              {/* Preço */}
+              <div className="space-y-3 p-3 border border-border rounded-xl bg-muted/10">
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-foreground">
+                  <input 
+                    type="checkbox" 
+                    checked={updatePriceChecked} 
+                    onChange={(e) => setUpdatePriceChecked(e.target.checked)} 
+                    className="rounded border-border text-primary focus:ring-primary cursor-pointer h-4 w-4"
+                  />
+                  <span>Alterar Preço de Venda (R$)</span>
+                </label>
+                {updatePriceChecked && (
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    min="0"
+                    required
+                    value={bulkPrice}
+                    onChange={(e) => setBulkPrice(e.target.value)}
+                    placeholder="Ex: 149.90"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground"
+                  />
+                )}
+              </div>
+
+              {/* Estoque */}
+              <div className="space-y-3 p-3 border border-border rounded-xl bg-muted/10">
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-foreground">
+                  <input 
+                    type="checkbox" 
+                    checked={updateQuantityChecked} 
+                    onChange={(e) => setUpdateQuantityChecked(e.target.checked)} 
+                    className="rounded border-border text-primary focus:ring-primary cursor-pointer h-4 w-4"
+                  />
+                  <span>Alterar Quantidade em Estoque</span>
+                </label>
+                {updateQuantityChecked && (
+                  <input 
+                    type="number" 
+                    min="0"
+                    required
+                    value={bulkQuantity}
+                    onChange={(e) => setBulkQuantity(e.target.value)}
+                    placeholder="Ex: 15"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground"
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsBulkEditOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isBulkEditing || (!updatePriceChecked && !updateQuantityChecked)}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isBulkEditing ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent"></span> : null}
+                  {isBulkEditing ? 'Salvando...' : 'Aplicar Alterações'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Publicação em Massa */}
+      {isBulkPublishOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <h3 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-500" />
+              Publicação em Massa ({selectedIds.length} selecionados)
+            </h3>
+            
+            {isBulkPublishing ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                <span className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></span>
+                <p className="text-sm font-medium text-foreground text-center px-6">
+                  {bulkPublishProgress}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  A IA do SellerDNA está gerando títulos SEO e descrições baseadas nas características reais de cada perfume.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <p className="text-sm text-muted-foreground mb-4">
+                  O processo de publicação em lote foi concluído. Veja os resultados abaixo:
+                </p>
+                
+                <div className="flex-1 overflow-y-auto border border-border rounded-xl divide-y divide-border bg-muted/10 mb-6 max-h-[50vh]">
+                  {bulkPublishResults?.map((res, index) => (
+                    <div key={index} className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-foreground line-clamp-1">{res.name}</span>
+                        {res.success ? (
+                          <span className="text-xs text-muted-foreground font-mono mt-0.5">ID: {res.mlItemId}</span>
+                        ) : (
+                          <span className="text-xs text-destructive mt-0.5 break-words">{res.error}</span>
+                        )}
+                      </div>
+                      
+                      <div>
+                        {res.success ? (
+                          <a 
+                            href={res.permalink} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="inline-flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border border-emerald-500/20 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
+                          >
+                            Ver Anúncio <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="bg-destructive/10 text-destructive border border-destructive/20 px-3 py-1.5 rounded-md text-xs font-semibold">
+                            Falhou
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-end">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsBulkPublishOpen(false);
+                      setSelectedIds([]);
+                      window.location.reload();
+                    }}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Concluir e Recarregar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,4 +11,5 @@ export async function listingRoutes(app: FastifyInstance) {
   app.post('/sync', controller.sync.bind(controller));
   app.post('/', controller.create.bind(controller));
   app.post('/:id/duplicate', controller.duplicate.bind(controller));
+  app.post('/bulk-publish', controller.bulkPublish.bind(controller));
 }

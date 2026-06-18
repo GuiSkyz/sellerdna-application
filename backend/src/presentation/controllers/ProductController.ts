@@ -148,4 +148,21 @@ export class ProductController {
       return reply.status(500).send({ error: 'Erro ao excluir produtos em massa' });
     }
   }
+
+  async updateBulk(request: FastifyRequest<{ Body: { ids: string[]; price?: number; quantity?: number } }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      const { ids, price, quantity } = request.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return reply.status(400).send({ error: 'Nenhum ID fornecido' });
+      }
+
+      await this.productRepository.updateManyProducts(ids, userId, { price, quantity });
+      return reply.send({ success: true, message: `${ids.length} produtos atualizados com sucesso` });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao atualizar produtos em massa' });
+    }
+  }
 }
