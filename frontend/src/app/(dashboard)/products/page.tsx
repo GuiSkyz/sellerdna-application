@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink, Trash2, Edit } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, ExternalLink, Trash2, Edit, Package } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Product {

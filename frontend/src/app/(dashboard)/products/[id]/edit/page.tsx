@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Loader2, Package, Tag, Box, Palette } from 'lucide-react';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const unwrappedParams = use(params);
+  const [unwrappedParams, setUnwrappedParams] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    params.then(setUnwrappedParams);
+  }, [params]);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,6 +36,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     async function fetchProduct() {
+      if (!unwrappedParams) return;
       try {
         const { createClient } = await import('@/utils/supabase/client');
         const supabase = createClient();
@@ -69,7 +74,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       }
     }
     fetchProduct();
-  }, [unwrappedParams.id]);
+  }, [unwrappedParams?.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -101,7 +106,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         payload.expirationDate = '';
       }
 
-      const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}`, {
+      const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams?.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
