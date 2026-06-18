@@ -69,19 +69,16 @@ export function MLDynamicAttributes({
       if (!res.ok) throw new Error('Erro ao carregar atributos da categoria');
       
       const data = await res.json();
-      // Filtrar apenas atributos relevantes (excluir GTIN e Garantia que já estão fixos, ou deixar todos)
-      const filtered = data.filter((attr: any) => 
-        attr.id !== 'GTIN' && 
-        attr.id !== 'WARRANTY_TYPE' && 
-        attr.id !== 'WARRANTY_TIME' && 
-        attr.id !== 'ITEM_CONDITION'
-      );
-      // Sort: required first
-      filtered.sort((a: any, b: any) => {
-        const aReq = a.tags?.required || a.tags?.catalog_required ? 1 : 0;
-        const bReq = b.tags?.required || b.tags?.catalog_required ? 1 : 0;
-        return bReq - aReq;
+      // Filtrar apenas atributos relevantes e OBRIGATÓRIOS (excluir GTIN e Garantia que já estão fixos)
+      const filtered = data.filter((attr: any) => {
+        const isRequired = attr.tags?.required || attr.tags?.catalog_required;
+        const isAlreadyHandled = ['GTIN', 'WARRANTY_TYPE', 'WARRANTY_TIME', 'ITEM_CONDITION'].includes(attr.id);
+        
+        return isRequired && !isAlreadyHandled;
       });
+      
+      // Sort: Alfabetico já que todos agora são obrigatorios
+      filtered.sort((a: any, b: any) => a.name.localeCompare(b.name));
 
       setAttributesList(filtered);
     } catch (err: any) {
