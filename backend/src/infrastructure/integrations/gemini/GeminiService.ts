@@ -82,8 +82,9 @@ export class GeminiService {
       6. ONDE USAR / OCASIÕES: (Em quais momentos, climas ou ocasiões este produto brilha mais).
       7. QUEBRA DE OBJEÇÕES E CHAMADA PARA AÇÃO: (Tranquilize o cliente sobre originalidade/qualidade e finalize com um CTA forte para compra imediata).
       
-      IMPORTANTE PARA O MERCADO LIVRE:
-      Não use formatação Markdown com asteriscos duplos (**), pois o Mercado Livre aceita apenas texto plano. Use letras maiúsculas para destacar TÍTULOS DE SEÇÕES. Use hifens (-) para criar listas.
+      IMPORTANTE PARA O MERCADO LIVRE E RESTRIÇÕES:
+      1. Não use formatação Markdown com asteriscos duplos (**), pois o Mercado Livre aceita apenas texto plano. Use letras maiúsculas para destacar TÍTULOS DE SEÇÕES. Use hifens (-) para criar listas.
+      2. NUNCA SE APRESENTE OU INCLUA TEXTOS CONVERSACIONAIS. NÃO inicie com frases como "Aqui está a descrição", "Sou seu consultor sênior", ou "Vamos criar uma descrição". RETORNE APENAS O CONTEÚDO FINAL DA DESCRIÇÃO.
     `;
 
     const result = await this.executeWithFallback(prompt, 0.8);

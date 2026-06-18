@@ -68,7 +68,25 @@ export class MercadoLivreApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      throw new Error(`Erro ao criar item no ML: ${JSON.stringify(errorData || response.statusText)}`);
+      
+      let friendlyMessage = '';
+      if (errorData?.cause && Array.isArray(errorData.cause)) {
+        const errorMessages = errorData.cause
+          .filter((c: any) => c.type === 'error') // Ignore warnings
+          .map((c: any) => {
+            if (c.code === 'item.attribute.missing_conditional_required' && c.message.includes('GTIN')) {
+              return 'O Mercado Livre exige o código de barras (GTIN/EAN) para publicar produtos nesta categoria. Edite o produto e preencha este campo.';
+            }
+            if (c.message) return c.message;
+            return c.code;
+          });
+        
+        if (errorMessages.length > 0) {
+          friendlyMessage = errorMessages.join(' | ');
+        }
+      }
+
+      throw new Error(friendlyMessage ? friendlyMessage : `Erro ao criar anúncio no Mercado Livre: ${JSON.stringify(errorData || response.statusText)}`);
     }
 
     return await response.json();
