@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Loader2, Package, Tag, Box, Palette } from 'lucide-react';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
-export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const unwrappedParams = use(params);
+export default function CreateProductPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -17,50 +15,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     name: '',
     productType: 'Perfume',
     brand: '',
-    price: 0,
-    quantity: 0,
+    price: 0 as number | string,
+    quantity: 0 as number | string,
     sku: '',
     ncm: '',
-    weight: 0,
+    weight: 0 as number | string,
     imageUrl: '',
-    // Perfume specific:
     sizeMl: '',
     perfumeType: '',
     gender: '',
     expirationDate: ''
   });
-
-  useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-        const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}`);
-        if (!res.ok) throw new Error('Falha ao carregar produto');
-        const data = await res.json();
-        
-        setFormData({
-          name: data.name || '',
-          productType: data.productType || 'Perfume',
-          brand: data.brand || '',
-          price: data.price || 0,
-          quantity: data.quantity || 0,
-          sku: data.sku || '',
-          ncm: data.ncm || '',
-          weight: data.weight || 0,
-          imageUrl: data.imageUrl || '',
-          sizeMl: data.sizeMl || '',
-          perfumeType: data.perfumeType || '',
-          gender: data.gender || '',
-          expirationDate: data.expirationDate || ''
-        });
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchProduct();
-  }, [unwrappedParams.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -92,13 +57,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         payload.expirationDate = '';
       }
 
-      const res = await authenticatedFetch(`${apiUrl}/api/products/${unwrappedParams.id}`, {
-        method: 'PUT',
+      const res = await authenticatedFetch(`${apiUrl}/api/products`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       
-      if (!res.ok) throw new Error('Erro ao salvar produto');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erro ao salvar produto');
+      }
       
       router.push('/products');
     } catch (err: any) {
@@ -106,14 +74,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
-      </div>
-    );
-  }
 
   const isPerfume = formData.productType === 'Perfume';
 
@@ -125,8 +85,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Editar Produto</h1>
-            <p className="text-sm text-zinc-500 mt-1">Modifique os atributos do produto no sistema</p>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Novo Produto</h1>
+            <p className="text-sm text-zinc-500 mt-1">Crie um novo produto manualmente</p>
           </div>
         </div>
       </div>
@@ -245,9 +205,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               <label className="text-sm font-medium text-zinc-700">Preço de Venda (R$) *</label>
               <input 
                 required
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 name="price"
                 value={formData.price}
                 onChange={handleChange}
@@ -258,8 +216,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               <label className="text-sm font-medium text-zinc-700">Quantidade em Estoque *</label>
               <input 
                 required
-                type="number"
-                min="0"
+                type="text"
                 name="quantity"
                 value={formData.quantity}
                 onChange={handleChange}
@@ -288,12 +245,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   type="button"
                   onClick={() => {
                     if (!formData.name) return;
-                    // Auto-generate SKU based on product name (slugify)
                     const generatedSku = formData.name
-                      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+                      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                       .toLowerCase()
-                      .replace(/[^a-z0-9]+/g, '-') // replace non-alphanumeric with dash
-                      .replace(/^-+|-+$/g, ''); // remove leading/trailing dashes
+                      .replace(/[^a-z0-9]+/g, '-')
+                      .replace(/^-+|-+$/g, '');
                     
                     setFormData(prev => ({ ...prev, sku: generatedSku.toUpperCase() }));
                   }}
@@ -316,9 +272,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700">Peso (kg)</label>
               <input 
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 name="weight"
                 value={formData.weight}
                 onChange={handleChange}
@@ -341,7 +295,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Salvar Alterações
+            Criar Produto
           </button>
         </div>
       </form>

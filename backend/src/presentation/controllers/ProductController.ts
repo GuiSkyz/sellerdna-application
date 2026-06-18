@@ -84,6 +84,21 @@ export class ProductController {
     }
   }
 
+  async create(request: FastifyRequest<{ Body: any }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      
+      // Type assertion as the repository handles mapping to database fields
+      // In a real scenario we should validate `request.body` using a schema parser (like Zod)
+      const product = await this.productRepository.create(userId, request.body as any);
+      
+      return reply.status(201).send(product);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao criar produto' });
+    }
+  }
+
   async generateAdCopy(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     try {
       const userId = await this.getUserId(request);

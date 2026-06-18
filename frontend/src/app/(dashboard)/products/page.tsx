@@ -166,6 +166,13 @@ export default function ProductsPage() {
             </>
           )}
           <Link 
+            href="/products/create"
+            className="bg-white hover:bg-zinc-50 text-zinc-700 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2 border border-zinc-200"
+          >
+            <Package className="w-4 h-4" />
+            Novo Produto
+          </Link>
+          <Link 
             href="/products/import"
             className="bg-zinc-900 hover:bg-zinc-800 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm flex items-center gap-2"
           >

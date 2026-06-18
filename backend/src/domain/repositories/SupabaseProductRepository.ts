@@ -149,4 +149,54 @@ export class SupabaseProductRepository {
       throw new Error('Falha ao excluir produtos em massa.');
     }
   }
+
+  async create(userId: string, productData: Partial<Product>): Promise<Product> {
+    const mapToSnakeCase: any = {
+      user_id: userId,
+      name: productData.name,
+      product_type: productData.productType,
+      brand: productData.brand,
+      price: productData.price,
+      quantity: productData.quantity,
+      size_ml: productData.sizeMl,
+      perfume_type: productData.perfumeType,
+      gender: productData.gender,
+      expiration_date: productData.expirationDate,
+      weight: productData.weight,
+      ncm: productData.ncm,
+      sku: productData.sku,
+      image_url: productData.imageUrl,
+    };
+
+    const { data, error } = await supabase
+      .from('products')
+      .insert(mapToSnakeCase)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error('Erro ao criar produto no Supabase:', error);
+      throw new Error('Falha ao criar produto no banco de dados.');
+    }
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      customId: data.custom_id,
+      name: data.name,
+      productType: data.product_type,
+      brand: data.brand,
+      sizeMl: data.size_ml,
+      perfumeType: data.perfume_type,
+      price: Number(data.price),
+      quantity: Number(data.quantity),
+      gender: data.gender,
+      expirationDate: data.expiration_date,
+      weight: Number(data.weight),
+      ncm: data.ncm,
+      sku: data.sku,
+      imageUrl: data.image_url,
+      createdAt: new Date(data.created_at)
+    };
+  }
 }
