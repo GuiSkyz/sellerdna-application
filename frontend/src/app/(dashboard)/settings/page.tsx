@@ -12,13 +12,17 @@ function SettingsContent() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [googleAccounts, setGoogleAccounts] = useState<any[]>([]);
 
   useEffect(() => {
     const isConnected = searchParams.get('ml_connected');
+    const isGdriveConnected = searchParams.get('gdrive');
     const hasError = searchParams.get('error');
 
     if (isConnected === 'true') {
       setSuccessMsg('Sua conta do Mercado Livre foi conectada com sucesso!');
+    } else if (isGdriveConnected === 'success') {
+      setSuccessMsg('Sua conta do Google Drive foi conectada com sucesso!');
     } else if (isConnected === 'false' || hasError) {
       setErrorMsg('Não foi possível conectar a conta. Tente novamente.');
     }
@@ -32,13 +36,22 @@ function SettingsContent() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data, error } = await supabase
+        const { data: mlData, error: mlError } = await supabase
           .from('mercadolivre_accounts')
           .select('*')
           .eq('user_id', user.id);
 
-        if (error) throw error;
-        setAccounts(data || []);
+        if (mlError) throw mlError;
+        setAccounts(mlData || []);
+
+        const { data: googleData, error: googleError } = await supabase
+          .from('google_integrations')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (!googleError && googleData) {
+          setGoogleAccounts(googleData);
+        }
       } catch (err) {
         console.error('Erro ao buscar contas:', err);
       }
@@ -148,13 +161,29 @@ function SettingsContent() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleConnectGoogle}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-            >
-              {loading ? 'Redirecionando...' : 'Conectar Conta'}
-            </button>
+            {googleAccounts.length > 0 ? (
+              <div className="flex flex-col items-end gap-2">
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-medium flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Conectado
+                </span>
+                <button
+                  onClick={handleConnectGoogle}
+                  disabled={loading}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  {loading ? 'Redirecionando...' : 'Reconectar'}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleConnectGoogle}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 h-fit"
+              >
+                {loading ? 'Redirecionando...' : 'Conectar Conta'}
+              </button>
+            )}
           </div>
         </div>
       </div>
