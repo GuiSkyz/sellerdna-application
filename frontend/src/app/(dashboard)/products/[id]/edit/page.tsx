@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Loader2, Package, Tag, Box, Palette } from 'lucide-react';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
+import { MLDynamicAttributes } from '@/components/MLDynamicAttributes';
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const [unwrappedParams, setUnwrappedParams] = useState<{ id: string } | null>(null);
@@ -35,7 +36,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     listingTypeId: 'gold_special',
     gtin: '',
     warrantyType: 'Garantia do vendedor',
-    warrantyTime: '30 dias'
+    warrantyTime: '30 dias',
+    mlCategoryId: '',
+    mlCategoryName: '',
+    mlAttributes: {} as Record<string, any>
   });
 
   useEffect(() => {
@@ -74,7 +78,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           listingTypeId: data.listing_type_id || 'gold_special',
           gtin: data.gtin || '',
           warrantyType: data.warranty_type || 'Garantia do vendedor',
-          warrantyTime: data.warranty_time || '30 dias'
+          warrantyTime: data.warranty_time || '30 dias',
+          mlCategoryId: data.ml_category_id || '',
+          mlCategoryName: '', // Loaded by the component if mlCategoryId is present
+          mlAttributes: data.ml_attributes || {}
         });
       } catch (err: any) {
         setError(err.message);
@@ -418,6 +425,20 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 />
               </div>
             )}
+          </div>
+          
+          <div className="mt-6 border-t border-border pt-6">
+            <MLDynamicAttributes
+              title={formData.name}
+              categoryId={formData.mlCategoryId}
+              categoryName={formData.mlCategoryName}
+              attributesData={formData.mlAttributes}
+              onCategorySelected={(id, name) => setFormData(prev => ({ ...prev, mlCategoryId: id, mlCategoryName: name }))}
+              onAttributeChange={(key, value) => setFormData(prev => ({ 
+                ...prev, 
+                mlAttributes: { ...prev.mlAttributes, [key]: value } 
+              }))}
+            />
           </div>
         </div>
 

@@ -20,5 +20,7 @@ export interface Product {
   gtin?: string;
   warrantyType?: string;
   warrantyTime?: string;
+  mlCategoryId?: string;
+  mlAttributes?: Record<string, any>;
   createdAt: Date;
 }

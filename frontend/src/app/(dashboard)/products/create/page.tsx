@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Loader2, Package, Tag, Box, Palette } from 'lucide-react';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
+import { MLDynamicAttributes } from '@/components/MLDynamicAttributes';
 
 export default function CreateProductPage() {
   const router = useRouter();
@@ -29,7 +30,10 @@ export default function CreateProductPage() {
     listingTypeId: 'gold_special',
     gtin: '',
     warrantyType: 'Garantia do vendedor',
-    warrantyTime: '30 dias'
+    warrantyTime: '30 dias',
+    mlCategoryId: '',
+    mlCategoryName: '',
+    mlAttributes: {} as Record<string, any>
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -61,6 +65,8 @@ export default function CreateProductPage() {
         payload.gender = '';
         payload.expirationDate = '';
       }
+      // Preparar os atributos adicionais no payload (se for enviar para o ML na mesma hora)
+      // Mas pro banco, a gente mapeia como propriedades normais do produto no backend
 
       const res = await authenticatedFetch(`${apiUrl}/api/products`, {
         method: 'POST',
@@ -354,6 +360,20 @@ export default function CreateProductPage() {
                 />
               </div>
             )}
+          </div>
+          
+          <div className="mt-6 border-t border-border pt-6">
+            <MLDynamicAttributes
+              title={formData.name}
+              categoryId={formData.mlCategoryId}
+              categoryName={formData.mlCategoryName}
+              attributesData={formData.mlAttributes}
+              onCategorySelected={(id, name) => setFormData(prev => ({ ...prev, mlCategoryId: id, mlCategoryName: name }))}
+              onAttributeChange={(key, value) => setFormData(prev => ({ 
+                ...prev, 
+                mlAttributes: { ...prev.mlAttributes, [key]: value } 
+              }))}
+            />
           </div>
         </div>
 

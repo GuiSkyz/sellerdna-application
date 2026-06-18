@@ -26,6 +26,8 @@ export class SupabaseProductRepository {
         gtin: p.gtin,
         warranty_type: p.warrantyType,
         warranty_time: p.warrantyTime,
+        ml_category_id: p.mlCategoryId,
+        ml_attributes: p.mlAttributes,
         created_at: p.createdAt.toISOString()
       }))
     );
@@ -69,6 +71,8 @@ export class SupabaseProductRepository {
       gtin: row.gtin,
       warrantyType: row.warranty_type,
       warrantyTime: row.warranty_time,
+      mlCategoryId: row.ml_category_id,
+      mlAttributes: row.ml_attributes,
       createdAt: new Date(row.created_at)
     }));
   }
@@ -105,6 +109,8 @@ export class SupabaseProductRepository {
       gtin: data.gtin,
       warrantyType: data.warranty_type,
       warrantyTime: data.warranty_time,
+      mlCategoryId: data.ml_category_id,
+      mlAttributes: data.ml_attributes,
       createdAt: new Date(data.created_at)
     };
   }
@@ -129,6 +135,8 @@ export class SupabaseProductRepository {
     if (updateData.gtin !== undefined) mapToSnakeCase.gtin = updateData.gtin;
     if (updateData.warrantyType !== undefined) mapToSnakeCase.warranty_type = updateData.warrantyType;
     if (updateData.warrantyTime !== undefined) mapToSnakeCase.warranty_time = updateData.warrantyTime;
+    if (updateData.mlCategoryId !== undefined) mapToSnakeCase.ml_category_id = updateData.mlCategoryId;
+    if (updateData.mlAttributes !== undefined) mapToSnakeCase.ml_attributes = updateData.mlAttributes;
 
     const { data, error } = await supabase
       .from('products')

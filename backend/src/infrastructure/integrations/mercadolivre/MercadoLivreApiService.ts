@@ -86,4 +86,26 @@ export class MercadoLivreApiService {
     }
     return null;
   }
+
+  async predictCategoryFull(title: string): Promise<{ id: string, name: string } | null> {
+    const url = `${this.baseUrl}/sites/MLB/domain_discovery/search?limit=1&q=${encodeURIComponent(title)}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return { id: data[0].category_id, name: data[0].category_name };
+    }
+    return null;
+  }
+
+  async getCategoryAttributes(categoryId: string): Promise<any[]> {
+    const url = `${this.baseUrl}/categories/${categoryId}/attributes`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Erro ao buscar atributos da categoria: ${response.statusText}`);
+    }
+    return await response.json();
+  }
 }

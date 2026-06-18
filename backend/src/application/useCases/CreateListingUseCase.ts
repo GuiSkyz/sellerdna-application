@@ -30,7 +30,7 @@ export class CreateListingUseCase {
     }
 
     // 2. Resolve Category ID (Inference if missing)
-    let resolvedCategoryId: string | undefined | null = categoryId;
+    let resolvedCategoryId: string | undefined | null = product.mlCategoryId || categoryId;
     if (!resolvedCategoryId) {
       resolvedCategoryId = await this.mlApiService.predictCategory(title);
       if (!resolvedCategoryId) {
@@ -46,6 +46,14 @@ export class CreateListingUseCase {
       attributes.push({ id: 'WARRANTY_TYPE', value_name: product.warrantyType });
       if (product.warrantyTime) {
         attributes.push({ id: 'WARRANTY_TIME', value_name: product.warrantyTime });
+      }
+    }
+
+    if (product.mlAttributes) {
+      for (const [key, value] of Object.entries(product.mlAttributes)) {
+        if (value && String(value).trim() !== '') {
+          attributes.push({ id: key, value_name: String(value) });
+        }
       }
     }
 
