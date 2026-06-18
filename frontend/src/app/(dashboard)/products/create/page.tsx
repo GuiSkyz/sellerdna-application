@@ -24,7 +24,12 @@ export default function CreateProductPage() {
     sizeMl: '',
     perfumeType: '',
     gender: '',
-    expirationDate: ''
+    expirationDate: '',
+    condition: 'Novo',
+    listingTypeId: 'gold_special',
+    gtin: '',
+    warrantyType: 'Garantia do vendedor',
+    warrantyTime: '30 dias'
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -280,6 +285,75 @@ export default function CreateProductPage() {
                 className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all text-foreground"
               />
             </div>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50"></div>
+          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="w-5 h-5 flex items-center justify-center font-bold text-blue-600 bg-blue-100 rounded-full text-[10px]">ML</span>
+            Integração Mercado Livre
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Condição</label>
+              <select 
+                name="condition"
+                value={formData.condition}
+                onChange={handleChange}
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+              >
+                <option value="Novo">Novo</option>
+                <option value="Usado">Usado</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Tipo de Anúncio</label>
+              <select 
+                name="listingTypeId"
+                value={formData.listingTypeId}
+                onChange={handleChange}
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+              >
+                <option value="gold_special">Clássico (gold_special)</option>
+                <option value="gold_pro">Premium (gold_pro)</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Código de Barras (GTIN/EAN)</label>
+              <input 
+                name="gtin"
+                value={formData.gtin}
+                onChange={handleChange}
+                placeholder="Ex: 7891010101010"
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Tipo de Garantia</label>
+              <select 
+                name="warrantyType"
+                value={formData.warrantyType}
+                onChange={handleChange}
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+              >
+                <option value="Garantia do vendedor">Garantia do vendedor</option>
+                <option value="Garantia de fábrica">Garantia de fábrica</option>
+                <option value="Sem garantia">Sem garantia</option>
+              </select>
+            </div>
+            {formData.warrantyType !== 'Sem garantia' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Tempo de Garantia</label>
+                <input 
+                  name="warrantyTime"
+                  value={formData.warrantyTime}
+                  onChange={handleChange}
+                  placeholder="Ex: 30 dias, 3 meses"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+                />
+              </div>
+            )}
           </div>
         </div>
 

@@ -15,5 +15,10 @@ export interface Product {
   ncm?: string;
   sku?: string;
   imageUrl?: string;
+  condition?: string;
+  listingTypeId?: string;
+  gtin?: string;
+  warrantyType?: string;
+  warrantyTime?: string;
   createdAt: Date;
 }

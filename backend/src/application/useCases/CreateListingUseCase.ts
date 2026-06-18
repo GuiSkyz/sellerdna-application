@@ -38,6 +38,17 @@ export class CreateListingUseCase {
       }
     }
 
+    const attributes: any[] = [];
+    if (product.gtin) {
+      attributes.push({ id: 'GTIN', value_name: product.gtin });
+    }
+    if (product.warrantyType && product.warrantyType !== 'Sem garantia') {
+      attributes.push({ id: 'WARRANTY_TYPE', value_name: product.warrantyType });
+      if (product.warrantyTime) {
+        attributes.push({ id: 'WARRANTY_TIME', value_name: product.warrantyTime });
+      }
+    }
+
     // 3. Transform Product to ML Item Format
     const mlItemPayload = {
       title: title.substring(0, 60), // ML max limit
@@ -46,14 +57,15 @@ export class CreateListingUseCase {
       currency_id: 'BRL',
       available_quantity: quantity,
       buying_mode: 'buy_it_now',
-      condition: 'new',
-      listing_type_id: 'gold_special', // Classic (gold_pro for Premium)
+      condition: product.condition === 'Usado' ? 'used' : 'new',
+      listing_type_id: product.listingTypeId || 'gold_special',
       description: {
         plain_text: description
       },
       pictures: product.imageUrl ? [
         { source: product.imageUrl }
-      ] : []
+      ] : [],
+      attributes: attributes.length > 0 ? attributes : undefined
     };
 
     // 4. Call ML API

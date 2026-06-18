@@ -21,6 +21,11 @@ export class SupabaseProductRepository {
         ncm: p.ncm,
         sku: p.sku,
         image_url: p.imageUrl,
+        condition: p.condition,
+        listing_type_id: p.listingTypeId,
+        gtin: p.gtin,
+        warranty_type: p.warrantyType,
+        warranty_time: p.warrantyTime,
         created_at: p.createdAt.toISOString()
       }))
     );
@@ -59,6 +64,11 @@ export class SupabaseProductRepository {
       ncm: row.ncm,
       sku: row.sku,
       imageUrl: row.image_url,
+      condition: row.condition,
+      listingTypeId: row.listing_type_id,
+      gtin: row.gtin,
+      warrantyType: row.warranty_type,
+      warrantyTime: row.warranty_time,
       createdAt: new Date(row.created_at)
     }));
   }
@@ -90,6 +100,11 @@ export class SupabaseProductRepository {
       ncm: data.ncm,
       sku: data.sku,
       imageUrl: data.image_url,
+      condition: data.condition,
+      listingTypeId: data.listing_type_id,
+      gtin: data.gtin,
+      warrantyType: data.warranty_type,
+      warrantyTime: data.warranty_time,
       createdAt: new Date(data.created_at)
     };
   }
@@ -109,8 +124,13 @@ export class SupabaseProductRepository {
     if (updateData.ncm !== undefined) mapToSnakeCase.ncm = updateData.ncm;
     if (updateData.sku !== undefined) mapToSnakeCase.sku = updateData.sku;
     if (updateData.imageUrl !== undefined) mapToSnakeCase.image_url = updateData.imageUrl;
+    if (updateData.condition !== undefined) mapToSnakeCase.condition = updateData.condition;
+    if (updateData.listingTypeId !== undefined) mapToSnakeCase.listing_type_id = updateData.listingTypeId;
+    if (updateData.gtin !== undefined) mapToSnakeCase.gtin = updateData.gtin;
+    if (updateData.warrantyType !== undefined) mapToSnakeCase.warranty_type = updateData.warrantyType;
+    if (updateData.warrantyTime !== undefined) mapToSnakeCase.warranty_time = updateData.warrantyTime;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('products')
       .update(mapToSnakeCase)
       .eq('id', id)
