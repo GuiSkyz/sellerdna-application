@@ -22,16 +22,23 @@ export class GoogleDriveService {
   async findSubfolderByName(parentFolderId: string, folderName: string): Promise<string | null> {
     try {
       const response = await this.drive.files.list({
-        q: `'${parentFolderId}' in parents and name = '${folderName.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+        q: `'${parentFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
         fields: 'files(id, name)',
         spaces: 'drive',
+        pageSize: 1000,
       });
 
       const files = response.data.files;
-      if (files && files.length > 0) {
-        return files[0].id || null;
-      }
-      return null;
+      if (!files || files.length === 0) return null;
+
+      const target = folderName.trim().toLowerCase();
+      
+      const matchedFolder = files.find(f => {
+        if (!f.name) return false;
+        return f.name.trim().toLowerCase() === target;
+      });
+
+      return matchedFolder?.id || null;
     } catch (error) {
       console.error(`Erro ao buscar pasta '${folderName}' no Google Drive:`, error);
       throw new Error(`Não foi possível acessar a pasta base do Google Drive. Verifique se ela foi compartilhada corretamente com o email de serviço.`);
