@@ -168,11 +168,14 @@ export class SupabaseProductRepository {
       image_url: productData.imageUrl,
     };
 
-    const { data, error } = await supabase
+    const response = await supabase
       .from('products')
       .insert(mapToSnakeCase)
       .select()
       .single();
+
+    const error = response.error;
+    const data: any = response.data;
 
     if (error || !data) {
       console.error('Erro ao criar produto no Supabase:', error);
