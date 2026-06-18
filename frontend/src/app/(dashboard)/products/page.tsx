@@ -253,18 +253,23 @@ export default function ProductsPage() {
                   
                   for (const id of selectedIds) {
                     try {
-                      await authenticatedFetch(`${apiUrl}/api/gdrive/fetch-images`, {
+                      const res = await authenticatedFetch(`${apiUrl}/api/gdrive/fetch-images`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ productId: id })
                       });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || 'Falha desconhecida');
                       imported++;
-                    } catch (e) {
+                    } catch (e: any) {
                       console.error(`Falha ao importar foto do produto ${id}`, e);
+                      alert(`Erro ao importar fotos do produto ID ${id}: ${e.message}`);
                     }
                   }
-                  alert(`Importação finalizada! ${imported} fotos importadas com sucesso.`);
-                  window.location.reload();
+                  if (imported > 0) {
+                    alert(`Importação finalizada! ${imported} fotos importadas com sucesso.`);
+                    window.location.reload();
+                  }
                 }}
                 className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-md text-sm font-medium transition-colors border border-primary/20 flex items-center gap-2"
               >
