@@ -93,6 +93,7 @@ export class ListingController {
       const newListing = await this.createListingUseCase.execute({
         userId,
         productId,
+        accountId: account.id,
         accountToken: validToken,
         title,
         description,
@@ -124,7 +125,7 @@ export class ListingController {
       
       const validToken = await getValidMLToken(account.id);
 
-      const result = await this.duplicateListingUseCase.execute(userId, id, validToken, categoryId, useAI);
+      const result = await this.duplicateListingUseCase.execute(userId, id, validToken, account.id, categoryId, useAI);
 
       return reply.status(200).send(result);
     } catch (error) {

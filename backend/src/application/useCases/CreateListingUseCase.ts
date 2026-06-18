@@ -1,10 +1,12 @@
 import { MercadoLivreApiService } from '../../infrastructure/integrations/mercadolivre/MercadoLivreApiService';
 import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
+import { supabase } from '../../infrastructure/database/supabase';
 import { randomUUID } from 'crypto';
 
 export interface CreateListingInput {
   userId: string;
   productId: string;
+  accountId: string;
   accountToken: string;
   title: string;
   description: string;
@@ -20,7 +22,7 @@ export class CreateListingUseCase {
   ) {}
 
   async execute(input: CreateListingInput): Promise<any> {
-    const { userId, productId, accountToken, title, description, price, quantity, categoryId } = input;
+    const { userId, productId, accountId, accountToken, title, description, price, quantity, categoryId } = input;
 
     // 1. Fetch Product from DB to get the Image URL and fallback data
     const product = await this.productRepository.getById(productId, userId);
@@ -69,7 +71,8 @@ export class CreateListingUseCase {
       }
       
       if (fileId) {
-        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+        // Return a direct image link format that is fast and works reliably with third-party automated fetches
+        return `https://lh3.googleusercontent.com/d/${fileId}`;
       }
       return url;
     };
@@ -95,7 +98,12 @@ export class CreateListingUseCase {
         plain_text: description
       },
       pictures: mlPictures.length > 0 ? mlPictures : [],
-      attributes: attributes.length > 0 ? attributes : undefined
+      attributes: attributes.length > 0 ? attributes : undefined,
+      shipping: {
+        mode: 'me2',
+        local_pick_up: false,
+        free_shipping: false
+      }
     };
 
     // 4. Call ML API
@@ -104,7 +112,7 @@ export class CreateListingUseCase {
     // 5. Build Local Record
     const newListing = {
       id: randomUUID(),
-      accountId: 'account-uuid', // To be properly mapped
+      accountId: accountId,
       productId: product.id,
       mlItemId: mlResponse.id,
       title: mlResponse.title,
@@ -115,7 +123,27 @@ export class CreateListingUseCase {
       createdAt: new Date()
     };
 
-    // await this.listingRepository.create(newListing); // TODO: save to DB
+    // 6. Save Listing to DB
+    const listingToInsert = {
+      id: newListing.id,
+      account_id: accountId,
+      product_id: productId,
+      ml_item_id: newListing.mlItemId,
+      title: newListing.title,
+      price: newListing.price,
+      available_quantity: newListing.availableQuantity,
+      status: newListing.status,
+      permalink: newListing.permalink,
+      pictures: mlPictures,
+      attributes: attributes,
+      created_at: newListing.createdAt.toISOString()
+    };
+
+    const { error: dbError } = await supabase.from('listings').insert(listingToInsert);
+    if (dbError) {
+      console.error('Erro ao salvar anúncio local no Supabase:', dbError);
+      throw new Error(`Falha ao salvar anúncio no banco de dados local: ${dbError.message}`);
+    }
 
     return newListing;
   }

@@ -7,7 +7,7 @@ export class DuplicateListingUseCase {
     private createListingUseCase: CreateListingUseCase
   ) {}
 
-  async execute(userId: string, originalListingId: string, accountToken: string, categoryId: string, useAI: boolean = true): Promise<any> {
+  async execute(userId: string, originalListingId: string, accountToken: string, accountId: string, categoryId: string, useAI: boolean = true): Promise<any> {
     // 1. Fetch original listing from DB
     // const originalListing = await this.listingRepository.findById(originalListingId);
 
@@ -42,6 +42,7 @@ export class DuplicateListingUseCase {
     const newListing = await this.createListingUseCase.execute({
       userId,
       productId: originalListing.productId,
+      accountId,
       accountToken,
       title: finalTitle,
       description: finalDescription,

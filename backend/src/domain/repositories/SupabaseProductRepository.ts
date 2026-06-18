@@ -185,6 +185,7 @@ export class SupabaseProductRepository {
   async create(userId: string, productData: Partial<Product>): Promise<Product> {
     const mapToSnakeCase: any = {
       user_id: userId,
+      custom_id: productData.customId,
       name: productData.name,
       product_type: productData.productType,
       brand: productData.brand,
@@ -199,6 +200,13 @@ export class SupabaseProductRepository {
       sku: productData.sku,
       image_url: productData.imageUrl,
       image_urls: productData.imageUrls,
+      condition: productData.condition,
+      listing_type_id: productData.listingTypeId,
+      gtin: productData.gtin,
+      warranty_type: productData.warrantyType,
+      warranty_time: productData.warrantyTime,
+      ml_category_id: productData.mlCategoryId,
+      ml_attributes: productData.mlAttributes,
     };
 
     const response = await supabase
@@ -233,6 +241,13 @@ export class SupabaseProductRepository {
       sku: data.sku,
       imageUrl: data.image_url,
       imageUrls: data.image_urls,
+      condition: data.condition,
+      listingTypeId: data.listing_type_id,
+      gtin: data.gtin,
+      warrantyType: data.warranty_type,
+      warrantyTime: data.warranty_time,
+      mlCategoryId: data.ml_category_id,
+      mlAttributes: data.ml_attributes,
       createdAt: new Date(data.created_at)
     };
   }

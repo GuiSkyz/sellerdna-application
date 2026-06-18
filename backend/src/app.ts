@@ -6,6 +6,7 @@ import { productRoutes } from './presentation/routes/productRoutes';
 import { mlRoutes } from './presentation/routes/mlRoutes';
 import { listingRoutes } from './presentation/routes/listingRoutes';
 import { dashboardRoutes } from './presentation/routes/dashboardRoutes';
+import { gdriveRoutes } from './presentation/routes/gdriveRoutes';
 
 export async function buildApp() {
   const app = Fastify({
@@ -36,8 +37,6 @@ export async function buildApp() {
   await app.register(listingRoutes, { prefix: '/api/listings' });
   await app.register(dashboardRoutes, { prefix: '/api/dashboard' });
   
-  // Dynamic import to avoid circular dependencies or unresolved paths if needed, but static is fine
-  const { gdriveRoutes } = require('./presentation/routes/gdriveRoutes');
   await app.register(gdriveRoutes, { prefix: '/api/gdrive' });
 
   return app;
