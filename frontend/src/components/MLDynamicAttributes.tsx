@@ -158,6 +158,16 @@ export function MLDynamicAttributes({
                         <option key={v.id} value={v.name}>{v.name}</option>
                       ))}
                     </select>
+                  ) : attr.value_type === 'boolean' ? (
+                    <select
+                      value={attributesData[attr.id] || ''}
+                      onChange={(e) => onAttributeChange(attr.id, e.target.value)}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="Sim">Sim</option>
+                      <option value="Não">Não</option>
+                    </select>
                   ) : (
                     <input
                       type={attr.value_type === 'number_unit' ? 'text' : 'text'}
