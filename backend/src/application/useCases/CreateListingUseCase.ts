@@ -53,10 +53,7 @@ export class CreateListingUseCase {
       },
       pictures: product.imageUrl ? [
         { source: product.imageUrl }
-      ] : [],
-      attributes: [
-        { id: 'ITEM_CONDITION', value_name: 'Novo' }
-      ]
+      ] : []
     };
 
     // 4. Call ML API

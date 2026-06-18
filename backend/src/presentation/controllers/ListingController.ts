@@ -102,9 +102,9 @@ export class ListingController {
       });
 
       return reply.status(201).send({ message: 'Anúncio publicado com sucesso no Mercado Livre', listing: newListing });
-    } catch (error) {
+    } catch (error: any) {
       request.log.error(error);
-      return reply.status(500).send({ error: 'Erro ao publicar anúncio' });
+      return reply.status(500).send({ error: error.message || 'Erro ao publicar anúncio' });
     }
   }
 
