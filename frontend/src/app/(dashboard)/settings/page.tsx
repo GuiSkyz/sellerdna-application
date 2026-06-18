@@ -44,13 +44,15 @@ function SettingsContent() {
         if (mlError) throw mlError;
         setAccounts(mlData || []);
 
-        const { data: googleData, error: googleError } = await supabase
-          .from('google_integrations')
-          .select('*')
-          .eq('user_id', user.id);
-
-        if (!googleError && googleData) {
-          setGoogleAccounts(googleData);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+        const gdriveRes = await authenticatedFetch(`${apiUrl}/api/gdrive/status`);
+        if (gdriveRes.ok) {
+          const gdriveData = await gdriveRes.json();
+          if (gdriveData.connected) {
+            setGoogleAccounts([gdriveData]);
+          } else {
+            setGoogleAccounts([]);
+          }
         }
       } catch (err) {
         console.error('Erro ao buscar contas:', err);

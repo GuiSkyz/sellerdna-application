@@ -12,6 +12,8 @@ export async function gdriveRoutes(app: FastifyInstance) {
   app.get('/auth', { preHandler: authMiddleware }, controller.auth.bind(controller));
   app.get<{ Querystring: { code: string, state: string } }>('/callback', controller.callback.bind(controller));
 
+  app.get('/status', { preHandler: authMiddleware }, controller.status.bind(controller));
+  
   // Rota para disparar a busca de fotos e upload
   app.post<{ Body: { productId: string } }>('/import-photos', { preHandler: authMiddleware }, controller.importPhotos.bind(controller));
 }

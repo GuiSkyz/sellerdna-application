@@ -83,4 +83,25 @@ export class GDriveController {
       return reply.status(500).send({ error: 'Erro ao buscar e importar fotos do Google Drive' });
     }
   }
+
+  async status(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      
+      const { data: integration, error } = await supabase
+        .from('google_integrations')
+        .select('updated_at')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !integration) {
+        return reply.send({ connected: false });
+      }
+
+      return reply.send({ connected: true, updatedAt: integration.updated_at });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao verificar status do Google Drive' });
+    }
+  }
 }
