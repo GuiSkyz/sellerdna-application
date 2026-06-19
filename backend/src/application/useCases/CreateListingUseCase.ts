@@ -94,9 +94,6 @@ export class CreateListingUseCase {
       buying_mode: 'buy_it_now',
       condition: product.condition === 'Usado' ? 'used' : 'new',
       listing_type_id: product.listingTypeId || 'gold_special',
-      description: {
-        plain_text: description
-      },
       pictures: mlPictures.length > 0 ? mlPictures : [],
       attributes: attributes.length > 0 ? attributes : undefined,
       shipping: {
@@ -106,8 +103,24 @@ export class CreateListingUseCase {
       }
     };
 
-    // 4. Call ML API
+    // 4. Call ML API to create item
     const mlResponse = await this.mlApiService.createItem(accountToken, mlItemPayload);
+    
+    // 4.1. Call ML API to add description (ML requires this to be a separate call)
+    if (description && description.trim() !== '') {
+      try {
+        await fetch(`https://api.mercadolibre.com/items/${mlResponse.id}/description`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accountToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ plain_text: description })
+        });
+      } catch (descError) {
+        console.error('Erro ao adicionar descrição no ML:', descError);
+      }
+    }
 
     // 5. Build Local Record
     const newListing = {
