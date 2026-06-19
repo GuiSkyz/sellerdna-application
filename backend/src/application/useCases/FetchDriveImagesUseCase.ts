@@ -65,12 +65,23 @@ export class FetchDriveImagesUseCase {
     
     for (const driveFile of driveFiles) {
       try {
-        const buffer = await this.googleDriveService.downloadFileAsBuffer(driveFile.id);
-        
-        // Sanitize name
         const cleanName = driveFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-        const extension = cleanName.includes('.') ? '' : '.jpg'; // Fallback extension
-        const filePath = `${userId}/${productId}/${Date.now()}-${cleanName}${extension}`;
+        const extension = cleanName.includes('.') ? '' : '.jpg';
+        const filePath = `${userId}/${productId}/${driveFile.id}${extension}`;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        const expectedUrl = publicUrlData?.publicUrl;
+
+        // Se a imagem já existe no produto atual com esta mesma URL do Supabase, nós a reutilizamos e pulamos o download
+        if (expectedUrl && product.imageUrls?.includes(expectedUrl)) {
+          imageUrls.push(expectedUrl);
+          continue;
+        }
+
+        const buffer = await this.googleDriveService.downloadFileAsBuffer(driveFile.id);
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('product-images')
@@ -81,15 +92,11 @@ export class FetchDriveImagesUseCase {
 
         if (uploadError) {
           console.error('Erro ao fazer upload para o Supabase Storage:', uploadError);
-          continue; // Pula para a próxima imagem
+          continue;
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-
-        if (publicUrlData && publicUrlData.publicUrl) {
-          imageUrls.push(publicUrlData.publicUrl);
+        if (expectedUrl) {
+          imageUrls.push(expectedUrl);
         }
       } catch (e) {
         console.error(`Falha ao processar arquivo ${driveFile.name}:`, e);
