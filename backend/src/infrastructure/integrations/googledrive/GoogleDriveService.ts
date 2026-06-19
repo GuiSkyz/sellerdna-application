@@ -31,7 +31,7 @@ export class GoogleDriveService {
       const files = response.data.files;
       if (!files || files.length === 0) return null;
 
-      const targetWords = folderName.toLowerCase().replace(/[^a-z0-9áéíóúâêîôûãõç]/g, ' ').split(/\s+/).filter(w => w.length > 0);
+      const stringSimilarity = require('string-similarity');
       
       let bestMatchId: string | null = null;
       let highestScore = 0;
@@ -44,18 +44,8 @@ export class GoogleDriveService {
           return f.id || null;
         }
 
-        const folderWords = f.name.toLowerCase().replace(/[^a-z0-9áéíóúâêîôûãõç]/g, ' ').split(/\s+/).filter(w => w.length > 0);
-        
-        const targetSet = new Set(targetWords);
-        const folderSet = new Set(folderWords);
-        
-        let intersection = 0;
-        for (const w of folderSet) {
-          if (targetSet.has(w)) intersection++;
-        }
-        
-        // Sørensen–Dice coefficient on words
-        const score = (2 * intersection) / (targetSet.size + folderSet.size);
+        // Calcula similaridade usando n-grams (pega erros de digitação como Fackar vs Fakhar)
+        const score = stringSimilarity.compareTwoStrings(folderName.toLowerCase(), f.name.toLowerCase());
         
         if (score > highestScore) {
           highestScore = score;
@@ -63,8 +53,8 @@ export class GoogleDriveService {
         }
       }
 
-      // Se a similaridade for maior que 40%, consideramos um match aceitável
-      if (highestScore > 0.4) {
+      // Se a similaridade for maior que 35%, consideramos um match aceitável
+      if (highestScore > 0.35) {
         return bestMatchId;
       }
 
