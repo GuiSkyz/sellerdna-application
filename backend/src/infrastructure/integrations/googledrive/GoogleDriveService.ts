@@ -31,17 +31,47 @@ export class GoogleDriveService {
       const files = response.data.files;
       if (!files || files.length === 0) return null;
 
-      const target = folderName.trim().toLowerCase();
+      const targetWords = folderName.toLowerCase().replace(/[^a-z0-9áéíóúâêîôûãõç]/g, ' ').split(/\s+/).filter(w => w.length > 0);
       
-      const matchedFolder = files.find(f => {
-        if (!f.name) return false;
-        return f.name.trim().toLowerCase() === target;
-      });
+      let bestMatchId: string | null = null;
+      let highestScore = 0;
 
-      return matchedFolder?.id || null;
-    } catch (error) {
+      for (const f of files) {
+        if (!f.name) continue;
+        
+        // Se for exato, retorna imediatamente
+        if (f.name.trim().toLowerCase() === folderName.trim().toLowerCase()) {
+          return f.id || null;
+        }
+
+        const folderWords = f.name.toLowerCase().replace(/[^a-z0-9áéíóúâêîôûãõç]/g, ' ').split(/\s+/).filter(w => w.length > 0);
+        
+        const targetSet = new Set(targetWords);
+        const folderSet = new Set(folderWords);
+        
+        let intersection = 0;
+        for (const w of folderSet) {
+          if (targetSet.has(w)) intersection++;
+        }
+        
+        // Sørensen–Dice coefficient on words
+        const score = (2 * intersection) / (targetSet.size + folderSet.size);
+        
+        if (score > highestScore) {
+          highestScore = score;
+          bestMatchId = f.id || null;
+        }
+      }
+
+      // Se a similaridade for maior que 40%, consideramos um match aceitável
+      if (highestScore > 0.4) {
+        return bestMatchId;
+      }
+
+      return null;
+    } catch (error: any) {
       console.error(`Erro ao buscar pasta '${folderName}' no Google Drive:`, error);
-      throw new Error(`Não foi possível acessar a pasta base do Google Drive. Verifique se ela foi compartilhada corretamente com o email de serviço.`);
+      throw new Error(`Erro API Google Drive: ${error.message}. Pasta Base: ${parentFolderId}. Verifique permissões.`);
     }
   }
 
@@ -64,9 +94,9 @@ export class GoogleDriveService {
 
       // Convert to direct download URLs
       return files.map(file => `https://drive.google.com/uc?export=download&id=${file.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao listar imagens na pasta '${folderId}' do Google Drive:`, error);
-      throw new Error('Falha ao obter imagens do Google Drive.');
+      throw new Error(`Erro API Google Drive: ${error.message}. Pasta Produto: ${folderId}. Verifique permissões.`);
     }
   }
 }
