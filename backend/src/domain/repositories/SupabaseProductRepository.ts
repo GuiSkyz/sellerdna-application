@@ -156,10 +156,11 @@ export class SupabaseProductRepository {
     return this.getById(id, userId);
   }
 
-  async updateManyProducts(ids: string[], userId: string, updateData: { price?: number; quantity?: number; clearImage?: boolean }): Promise<void> {
+  async updateManyProducts(ids: string[], userId: string, updateData: { price?: number; quantity?: number; clearImage?: boolean; mlCategoryId?: string }): Promise<void> {
     const mapToSnakeCase: any = {};
     if (updateData.price !== undefined) mapToSnakeCase.price = updateData.price;
     if (updateData.quantity !== undefined) mapToSnakeCase.quantity = updateData.quantity;
+    if (updateData.mlCategoryId !== undefined) mapToSnakeCase.ml_category_id = updateData.mlCategoryId;
     if (updateData.clearImage) {
       mapToSnakeCase.image_url = null;
       mapToSnakeCase.image_urls = [];

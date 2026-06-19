@@ -31,8 +31,10 @@ export default function ProductsPage() {
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [bulkPrice, setBulkPrice] = useState('');
   const [bulkQuantity, setBulkQuantity] = useState('');
+  const [bulkMlCategoryId, setBulkMlCategoryId] = useState('');
   const [updatePriceChecked, setUpdatePriceChecked] = useState(false);
   const [updateQuantityChecked, setUpdateQuantityChecked] = useState(false);
+  const [updateMlCategoryIdChecked, setUpdateMlCategoryIdChecked] = useState(false);
   const [isBulkEditing, setIsBulkEditing] = useState(false);
 
   const [isBulkPublishOpen, setIsBulkPublishOpen] = useState(false);
@@ -145,7 +147,7 @@ export default function ProductsPage() {
 
   const handleBulkUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!updatePriceChecked && !updateQuantityChecked) {
+    if (!updatePriceChecked && !updateQuantityChecked && !updateMlCategoryIdChecked) {
       alert('Selecione pelo menos um campo para atualizar.');
       return;
     }
@@ -156,6 +158,7 @@ export default function ProductsPage() {
       const payload: any = { ids: selectedIds };
       if (updatePriceChecked) payload.price = Number(bulkPrice);
       if (updateQuantityChecked) payload.quantity = Number(bulkQuantity);
+      if (updateMlCategoryIdChecked) payload.mlCategoryId = bulkMlCategoryId;
 
       const res = await authenticatedFetch(`${apiUrl}/api/products/bulk-update`, {
         method: 'POST',
@@ -549,6 +552,29 @@ export default function ProductsPage() {
                 )}
               </div>
 
+              {/* Categoria ML */}
+              <div className="space-y-3 p-3 border border-border rounded-xl bg-muted/10">
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-foreground">
+                  <input 
+                    type="checkbox" 
+                    checked={updateMlCategoryIdChecked} 
+                    onChange={(e) => setUpdateMlCategoryIdChecked(e.target.checked)} 
+                    className="rounded border-border text-primary focus:ring-primary cursor-pointer h-4 w-4"
+                  />
+                  <span>Vincular Categoria Mercado Livre</span>
+                </label>
+                {updateMlCategoryIdChecked && (
+                  <input 
+                    type="text" 
+                    required
+                    value={bulkMlCategoryId}
+                    onChange={(e) => setBulkMlCategoryId(e.target.value)}
+                    placeholder="Ex: MLB1271 (Para Perfumes)"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground font-mono uppercase"
+                  />
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button 
                   type="button" 
@@ -559,7 +585,7 @@ export default function ProductsPage() {
                 </button>
                 <button 
                   type="submit" 
-                  disabled={isBulkEditing || (!updatePriceChecked && !updateQuantityChecked)}
+                  disabled={isBulkEditing || (!updatePriceChecked && !updateQuantityChecked && !updateMlCategoryIdChecked)}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
                 >
                   {isBulkEditing ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent"></span> : null}

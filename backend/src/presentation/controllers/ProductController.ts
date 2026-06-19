@@ -149,16 +149,16 @@ export class ProductController {
     }
   }
 
-  async updateBulk(request: FastifyRequest<{ Body: { ids: string[]; price?: number; quantity?: number; clearImage?: boolean } }>, reply: FastifyReply) {
+  async updateBulk(request: FastifyRequest<{ Body: { ids: string[]; price?: number; quantity?: number; clearImage?: boolean; mlCategoryId?: string } }>, reply: FastifyReply) {
     try {
       const userId = await this.getUserId(request);
-      const { ids, price, quantity, clearImage } = request.body;
+      const { ids, price, quantity, clearImage, mlCategoryId } = request.body;
       
       if (!Array.isArray(ids) || ids.length === 0) {
         return reply.status(400).send({ error: 'Nenhum ID fornecido' });
       }
 
-      await this.productRepository.updateManyProducts(ids, userId, { price, quantity, clearImage });
+      await this.productRepository.updateManyProducts(ids, userId, { price, quantity, clearImage, mlCategoryId });
       return reply.send({ success: true, message: `${ids.length} produtos atualizados com sucesso` });
     } catch (error) {
       request.log.error(error);
