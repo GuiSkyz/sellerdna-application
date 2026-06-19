@@ -336,15 +336,24 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               </svg>
               Fotos do Produto (Google Drive)
             </h2>
-            <button
-              type="button"
-              onClick={handleFetchDriveImages}
-              disabled={fetchingDrive}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {fetchingDrive ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {fetchingDrive ? 'Buscando...' : 'Buscar Fotos na Pasta'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, imageUrls: [], imageUrl: '' }))}
+                className="px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 rounded-md text-sm font-medium transition-colors border border-orange-500/20"
+              >
+                Limpar Fotos
+              </button>
+              <button
+                type="button"
+                onClick={handleFetchDriveImages}
+                disabled={fetchingDrive}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {fetchingDrive ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {fetchingDrive ? 'Buscando...' : 'Buscar Fotos na Pasta'}
+              </button>
+            </div>
           </div>
           
           <div className="space-y-4">
