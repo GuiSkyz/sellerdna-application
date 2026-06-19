@@ -4,10 +4,10 @@ export class GeminiService {
   private ai: GoogleGenAI;
   // Modelos reais do Google Gemini
   private fallbackModels = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b'
+    'gemini-flash-latest',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite-001',
+    'gemini-2.0-flash'
   ];
 
   constructor() {
