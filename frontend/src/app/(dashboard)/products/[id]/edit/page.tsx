@@ -364,8 +364,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             {formData.imageUrls && formData.imageUrls.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 mt-4">
                 {formData.imageUrls.map((url, i) => (
-                  <div key={i} className="relative aspect-square rounded-md overflow-hidden border border-border bg-muted flex items-center justify-center">
+                  <div key={i} className="relative group aspect-square rounded-md overflow-hidden border border-border bg-muted flex items-center justify-center">
                     <img src={url} alt={`Foto ${i+1}`} className="object-cover w-full h-full" />
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newUrls = [...formData.imageUrls];
+                        newUrls.splice(i, 1);
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          imageUrls: newUrls,
+                          imageUrl: newUrls.length > 0 ? newUrls[0] : ''
+                        }));
+                      }}
+                      className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-sm"
+                      title="Remover Foto"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
                   </div>
                 ))}
               </div>
