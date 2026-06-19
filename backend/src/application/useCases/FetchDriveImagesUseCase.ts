@@ -49,20 +49,58 @@ export class FetchDriveImagesUseCase {
       throw new Error(`Pasta '${product.name}' não encontrada dentro da sua pasta principal do Drive.`);
     }
 
-    // 5. Fetch images inside that subfolder
-    const imageUrls = await this.googleDriveService.getImagesInFolder(subfolderId);
+    // 5. Fetch images files inside that subfolder
+    const driveFiles = await this.googleDriveService.getImagesFiles(subfolderId);
 
-    if (imageUrls.length === 0) {
+    if (driveFiles.length === 0) {
       throw new Error(`Nenhuma imagem encontrada na pasta '${product.name}'.`);
     }
 
-    if (imageUrls.length < 4) {
-      // We don't block it entirely, but Mercado Livre might. We should just return them.
-      // Or we can throw an error depending on business rules.
-      console.warn(`Atenção: Apenas ${imageUrls.length} imagens encontradas. O Mercado Livre pode exigir 4 ou mais para certos anúncios.`);
+    if (driveFiles.length < 4) {
+      console.warn(`Atenção: Apenas ${driveFiles.length} imagens encontradas. O Mercado Livre pode exigir 4 ou mais para certos anúncios.`);
     }
 
-    // 6. Update Product in Database
+    // 6. Download from Drive and upload to Supabase Storage
+    const imageUrls: string[] = [];
+    
+    for (const driveFile of driveFiles) {
+      try {
+        const buffer = await this.googleDriveService.downloadFileAsBuffer(driveFile.id);
+        
+        // Sanitize name
+        const cleanName = driveFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+        const extension = cleanName.includes('.') ? '' : '.jpg'; // Fallback extension
+        const filePath = `${userId}/${productId}/${Date.now()}-${cleanName}${extension}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, buffer, {
+            contentType: driveFile.mimeType || 'image/jpeg',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error('Erro ao fazer upload para o Supabase Storage:', uploadError);
+          continue; // Pula para a próxima imagem
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        if (publicUrlData && publicUrlData.publicUrl) {
+          imageUrls.push(publicUrlData.publicUrl);
+        }
+      } catch (e) {
+        console.error(`Falha ao processar arquivo ${driveFile.name}:`, e);
+      }
+    }
+
+    if (imageUrls.length === 0) {
+      throw new Error('Falha ao fazer upload das imagens para o servidor.');
+    }
+
+    // 7. Update Product in Database
     await this.productRepository.update(productId, userId, { imageUrls });
 
     return imageUrls;

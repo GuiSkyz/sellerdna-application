@@ -75,14 +75,11 @@ export class GoogleDriveService {
     }
   }
 
-  /**
-   * Get all images inside a folder and return their direct download URLs
-   */
-  async getImagesInFolder(folderId: string): Promise<string[]> {
+  async getImagesFiles(folderId: string): Promise<Array<{ id: string, name: string, mimeType: string }>> {
     try {
       const response = await this.drive.files.list({
         q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
-        fields: 'files(id, name)',
+        fields: 'files(id, name, mimeType)',
         spaces: 'drive',
         orderBy: 'name',
       });
@@ -92,11 +89,21 @@ export class GoogleDriveService {
         return [];
       }
 
-      // Convert to direct download URLs
-      return files.map(file => `https://drive.google.com/uc?export=download&id=${file.id}`);
+      return files as Array<{ id: string, name: string, mimeType: string }>;
     } catch (error: any) {
       console.error(`Erro ao listar imagens na pasta '${folderId}' do Google Drive:`, error);
       throw new Error(`Erro API Google Drive: ${error.message}. Pasta Produto: ${folderId}. Verifique permissões.`);
     }
+  }
+
+  /**
+   * Faz o download de um arquivo do Google Drive como Buffer
+   */
+  async downloadFileAsBuffer(fileId: string): Promise<Buffer> {
+    const response = await this.drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'arraybuffer' }
+    );
+    return Buffer.from(response.data as ArrayBuffer);
   }
 }
