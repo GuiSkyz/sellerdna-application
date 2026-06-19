@@ -41,15 +41,16 @@ export class GeminiService {
 
   async generateOptimizedTitle(productName: string, brand?: string, sizeMl?: string, perfumeType?: string): Promise<string> {
     const prompt = `
-      Você é um Consultor Sênior Profissional de Marketplace, especialista nos macetes do algoritmo do Mercado Livre.
-      Sua tarefa é criar o MELHOR título possível para o anúncio de um produto.
+      Você é um Consultor Sênior Profissional de Marketplace, especialista nos algoritmos do Mercado Livre.
+      Sua tarefa é criar o MELHOR título possível para o anúncio de um produto com foco 100% em SEO e confiança.
       
-      Regras INEGOCIÁVEIS:
-      1. O título deve ter EXATAMENTE 60 caracteres ou um pouco menos (NUNCA MAIS QUE 60 CARACTERES).
-      2. Deve conter as palavras-chave mais buscadas e os termos de maior conversão do ML (ex: Original, Lacrado, envio rápido, se aplicável).
-      3. Seja cirúrgico, focado na intenção de busca do comprador.
-      4. Não adicione aspas na resposta e não passe de 60 caracteres sob nenhuma hipótese.
-      5. Use apenas informações ESTRITAMENTE reais e verdadeiras sobre o perfume. NUNCA invente volumetrias, marcas ou termos de venda falsos.
+      Regras INEGOCIÁVEIS E CRÍTICAS:
+      1. O título DEVE TER NO MÁXIMO 55 CARACTERES. Seja extremamente conciso. Menos é mais.
+      2. Estrutura de SEO ideal: [Tipo de Produto] + [Marca] + [Nome] + [Volume] + [Gênero se houver] + [Palavra de Confiança].
+      3. Palavras de confiança permitidas: Original, Lacrado. 
+      4. PROIBIDO o uso de clichês de envio como: "Envio Já", "Envio Rápido", "Pronta Entrega", "Chega Hoje".
+      5. Não adicione aspas, nem pontos finais.
+      6. NUNCA invente volumetrias ou marcas que não estão nos dados abaixo.
 
       Dados do produto:
       Nome: ${productName}
@@ -57,11 +58,20 @@ export class GeminiService {
       Tamanho: ${sizeMl || 'Não especificado'}
       Tipo: ${perfumeType || 'Não especificado'}
       
-      Retorne APENAS o título sugerido, sem explicações.
+      Retorne APENAS o título sugerido. Exemplo: "Perfume Club De Nuit Intense Masculino 105ml Original"
     `;
 
     const result = await this.executeWithFallback(prompt, 0.7);
-    return result || productName; // Fallback extremo: retorna o próprio nome do produto
+    let finalTitle = result || productName;
+    
+    // Se a IA alucinar e passar de 60, nós cortamos de forma segura no último espaço
+    if (finalTitle.length > 60) {
+      const truncated = finalTitle.substring(0, 60);
+      const lastSpace = truncated.lastIndexOf(' ');
+      finalTitle = lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated;
+    }
+    
+    return finalTitle;
   }
 
   async generateDescription(productData: any): Promise<string> {
