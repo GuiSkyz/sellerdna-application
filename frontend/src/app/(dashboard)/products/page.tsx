@@ -277,6 +277,28 @@ export default function ProductsPage() {
                 Buscar Fotos (Drive)
               </button>
               <button 
+                onClick={async () => {
+                  if (!confirm(`Tem certeza que deseja remover as fotos de ${selectedIds.length} produtos?`)) return;
+                  try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+                    const res = await authenticatedFetch(`${apiUrl}/api/products/bulk-update`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ ids: selectedIds, clearImage: true })
+                    });
+                    if (!res.ok) throw new Error('Erro ao limpar fotos');
+                    alert(`Fotos removidas de ${selectedIds.length} produtos.`);
+                    window.location.reload();
+                  } catch (e: any) {
+                    alert(`Erro ao remover fotos: ${e.message}`);
+                  }
+                }}
+                className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-orange-500/20 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Limpar Fotos
+              </button>
+              <button 
                 onClick={handleBulkDelete}
                 disabled={isDeleting}
                 className="bg-destructive/10 hover:bg-destructive/20 text-destructive px-4 py-2 rounded-md text-sm font-medium transition-colors border border-destructive/20 flex items-center gap-2"

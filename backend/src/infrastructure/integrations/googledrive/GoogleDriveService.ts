@@ -31,7 +31,7 @@ export class GoogleDriveService {
       const files = response.data.files;
       if (!files || files.length === 0) return null;
 
-      const stringSimilarity = require('string-similarity');
+      const fuzz = require('fuzzball');
       
       let bestMatchId: string | null = null;
       let highestScore = 0;
@@ -44,8 +44,9 @@ export class GoogleDriveService {
           return f.id || null;
         }
 
-        // Calcula similaridade usando n-grams (pega erros de digitação como Fackar vs Fakhar)
-        const score = stringSimilarity.compareTwoStrings(folderName.toLowerCase(), f.name.toLowerCase());
+        // Calcula similaridade avançada focada em intersecção de tokens
+        // Pega maravilhosamente: "Fackar Gold" vs "Lattafa Fakhar Gold"
+        const score = fuzz.token_set_ratio(folderName.toLowerCase(), f.name.toLowerCase());
         
         if (score > highestScore) {
           highestScore = score;
@@ -53,8 +54,8 @@ export class GoogleDriveService {
         }
       }
 
-      // Se a similaridade for maior que 35%, consideramos um match aceitável
-      if (highestScore > 0.35) {
+      // 65 é uma pontuação muito segura para token_set_ratio, evita matches falsos como Yara Moi x Ameerat Al Arab (score 43)
+      if (highestScore > 65) {
         return bestMatchId;
       }
 
