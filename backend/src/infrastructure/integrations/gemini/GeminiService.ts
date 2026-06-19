@@ -17,6 +17,7 @@ export class GeminiService {
   }
 
   private async executeWithFallback(prompt: string, temperature: number): Promise<string | null> {
+    let lastError: any = null;
     for (const model of this.fallbackModels) {
       try {
         const response = await this.ai.models.generateContent({
@@ -30,13 +31,12 @@ export class GeminiService {
         if (response.text) {
           return response.text.trim();
         }
-      } catch (error) {
+      } catch (error: any) {
+        lastError = error;
         console.warn(`[Gemini] Falha ao gerar com o modelo ${model}. Tentando o próximo...`, error instanceof Error ? error.message : '');
-        // Se for o último modelo da lista, a exceção é engolida e retorna null, 
-        // ou podemos lançar. Aqui vamos logar e tentar o próximo.
       }
     }
-    return null;
+    throw new Error(`Falha em todos os modelos da IA: ${lastError?.message || 'Erro desconhecido'}`);
   }
 
   async generateOptimizedTitle(productName: string, brand?: string, sizeMl?: string, perfumeType?: string): Promise<string> {
@@ -79,7 +79,7 @@ export class GeminiService {
     
     const prompt = `
       Você é um Consultor Sênior Profissional de Marketplace, atuando no Mercado Livre com estratégias avançadas de conversão.
-      Sua tarefa é criar uma DESCRIÇÃO MATADORA e personalizada para o seguinte produto.
+      Sua tarefa é criar uma DESCRIÇÃO ALTAMENTE VENDEDORA e personalizada para o seguinte produto.
       
       Dados que temos (traga apenas informações 100% VERDADEIRAS, oficiais e reais do fabricante sobre este perfume exato. NUNCA invente volumetrias, marcas, notas olfativas falsas ou dados fictícios. Se não tiver certeza absoluta de alguma nota da pirâmide olfativa do perfume da marca ${productData.brand || ''}, não a invente de forma alguma):
       ${JSON.stringify(productData, null, 2)}

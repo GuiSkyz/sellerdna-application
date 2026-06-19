@@ -12,12 +12,14 @@ export class OptimizeListingUseCase {
       productData.perfumeType
     );
     
-    // Pequeno delay para evitar 429 Too Many Requests
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Delay para evitar 429 Too Many Requests (Gemini Free limit é de 15 RPM)
+    await new Promise(resolve => setTimeout(resolve, 2500));
     
     const optimizedDescription = await this.aiService.generateDescription(productData);
 
-    // TODO: Salvar registro de geração na tabela AI_GENERATIONS para auditoria e histórico
+    if (!optimizedDescription) {
+      throw new Error('Falha ao gerar descrição com a IA. A API do Google pode estar sobrecarregada ou bloqueou o conteúdo. Tente novamente em alguns segundos.');
+    }
 
     return {
       optimizedTitle,
