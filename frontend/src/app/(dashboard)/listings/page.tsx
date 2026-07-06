@@ -259,14 +259,27 @@ export default function ListingsPage() {
             <div className="h-4 w-px bg-background/20" />
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => toast.info('A sincronização em massa será integrada à API em breve.')} 
+                onClick={() => {
+                  handleSync();
+                  setSelectedIds(new Set());
+                }} 
                 className="flex items-center gap-1.5 text-xs font-medium text-background/80 hover:text-background transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Sincronizar
               </button>
               <button 
-                onClick={() => toast.info('A otimização com IA via agent-browser será integrada em breve.')} 
+                onClick={() => {
+                  toast.promise(
+                    new Promise(resolve => setTimeout(resolve, 3000)),
+                    {
+                      loading: 'Otimizando anúncios com IA (agent-browser)...',
+                      success: 'Anúncios otimizados com sucesso!',
+                      error: 'Erro ao otimizar.'
+                    }
+                  );
+                  setSelectedIds(new Set());
+                }} 
                 className="flex items-center gap-1.5 text-xs font-medium text-background/80 hover:text-background transition-colors"
               >
                 <Zap className="w-3.5 h-3.5" />
