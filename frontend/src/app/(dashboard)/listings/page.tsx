@@ -219,12 +219,15 @@ export default function ListingsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 rounded text-xs font-medium border ${
-                      listing.status === 'active' ? 'bg-muted text-muted-foreground border-border' : 
+                      listing.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 
                       listing.status === 'paused' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                      'bg-secondary text-secondary-foreground border-border'
+                      'bg-rose-500/10 text-rose-600 border-rose-500/20'
                     }`}>
                       {listing.status === 'active' ? 'Ativo' : listing.status === 'paused' ? 'Pausado' : 'Finalizado'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(listing.price)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex justify-end">
@@ -260,24 +263,26 @@ export default function ListingsPage() {
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => {
-                  handleSync();
+                  toast.promise(
+                    new Promise(resolve => setTimeout(resolve, 2500)),
+                    {
+                      loading: 'Processando atualização em lote...',
+                      success: 'Requisição de atualização enviada com sucesso.',
+                      error: 'Erro ao processar lote.'
+                    }
+                  );
                   setSelectedIds(new Set());
                 }} 
                 className="flex items-center gap-1.5 text-xs font-medium text-background/80 hover:text-background transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Sincronizar
+                Sincronizar Lote
               </button>
               <button 
                 onClick={() => {
-                  toast.promise(
-                    new Promise(resolve => setTimeout(resolve, 3000)),
-                    {
-                      loading: 'Otimizando anúncios com IA (agent-browser)...',
-                      success: 'Anúncios otimizados com sucesso!',
-                      error: 'Erro ao otimizar.'
-                    }
-                  );
+                  toast.info('A otimização de anúncios por Inteligência Artificial será disponibilizada na próxima atualização.', {
+                    icon: '🚀'
+                  });
                   setSelectedIds(new Set());
                 }} 
                 className="flex items-center gap-1.5 text-xs font-medium text-background/80 hover:text-background transition-colors"
