@@ -135,41 +135,83 @@ export function MLDynamicAttributes({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {attributesList.map(attr => {
               const isRequired = attr.tags?.required || attr.tags?.catalog_required;
+              const options = attr.values || attr.values_list || [];
+              const currentValue = String(attributesData[attr.id] || '');
               
               return (
-                <div key={attr.id} className="space-y-2">
-                  <label className="text-sm font-medium text-foreground flex items-center gap-1">
-                    {attr.name} {isRequired && <span className="text-red-500">*</span>}
+                <div key={attr.id} className="space-y-2 p-3.5 rounded-lg border border-border/60 bg-background/50">
+                  <label className="text-sm font-medium text-foreground flex items-center justify-between">
+                    <span>
+                      {attr.name} {isRequired && <span className="text-red-500">*</span>}
+                    </span>
+                    {isRequired && (
+                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-red-500/10 text-red-500">
+                        Obrigatório ML
+                      </span>
+                    )}
                   </label>
                   
-                  {attr.values_list && attr.values_list.length > 0 ? (
-                    <select
-                      value={String(attributesData[attr.id] || '')}
-                      onChange={(e) => onAttributeChange(attr.id, e.target.value)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
-                    >
-                      <option value="">Selecione...</option>
-                      {attr.values_list.map(v => (
-                        <option key={v.id} value={v.name}>{v.name}</option>
-                      ))}
-                    </select>
+                  {options.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {options.slice(0, 8).map(v => {
+                          const isSelected = currentValue.toLowerCase() === v.name.toLowerCase();
+                          return (
+                            <button
+                              key={v.id || v.name}
+                              type="button"
+                              onClick={() => onAttributeChange(attr.id, isSelected ? '' : v.name)}
+                              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                  : 'bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                              }`}
+                            >
+                              {v.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {options.length > 8 && (
+                        <select
+                          value={currentValue}
+                          onChange={(e) => onAttributeChange(attr.id, e.target.value)}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-md text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        >
+                          <option value="">Outra opção ({options.length} disponíveis)...</option>
+                          {options.map(v => (
+                            <option key={v.id || v.name} value={v.name}>{v.name}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   ) : attr.value_type === 'boolean' ? (
-                    <select
-                      value={String(attributesData[attr.id] || '')}
-                      onChange={(e) => onAttributeChange(attr.id, e.target.value)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
-                    >
-                      <option value="">Selecione...</option>
-                      <option value="Sim">Sim</option>
-                      <option value="Não">Não</option>
-                    </select>
+                    <div className="flex gap-2">
+                      {['Sim', 'Não'].map(opt => {
+                        const isSelected = currentValue === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => onAttributeChange(attr.id, isSelected ? '' : opt)}
+                            className={`flex-1 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                : 'bg-card text-muted-foreground border-border hover:bg-muted'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <input
-                      type={attr.value_type === 'number_unit' ? 'text' : 'text'}
-                      value={String(attributesData[attr.id] || '')}
+                      type="text"
+                      value={currentValue}
                       onChange={(e) => onAttributeChange(attr.id, e.target.value)}
                       placeholder={`Ex: ${attr.name}`}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground"
                     />
                   )}
                 </div>

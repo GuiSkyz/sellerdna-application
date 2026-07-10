@@ -289,29 +289,49 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-1 md:col-span-2">
                 <label className="text-sm font-medium text-foreground">Gênero</label>
-                <select 
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
-                >
-                  <option value="">Selecione...</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Feminino">Feminino</option>
-                  <option value="Unissex">Unissex</option>
-                </select>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Masculino', 'Feminino', 'Semigênero', 'Unissex'].map(g => {
+                    const isSelected = formData.gender === g;
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, gender: isSelected ? '' : g }))}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                          isSelected
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                            : 'bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Tipo de Perfume</label>
-                <input 
-                  name="perfumeType"
-                  value={formData.perfumeType}
-                  onChange={handleChange}
-                  placeholder="Ex: Eau de Parfum"
-                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
-                />
+              <div className="space-y-2 col-span-1 md:col-span-2">
+                <label className="text-sm font-medium text-foreground">Tipo de Perfume (ML)</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Eau de parfum', 'Eau de toilette', 'Parfum', 'Eau de cologne', 'Extrait de parfum', 'Body splash', 'Deo colônia'].map(t => {
+                    const isSelected = formData.perfumeType === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, perfumeType: isSelected ? '' : t }))}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                          isSelected
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                            : 'bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Validade</label>

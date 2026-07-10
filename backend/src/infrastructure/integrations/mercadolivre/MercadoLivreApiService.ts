@@ -230,6 +230,13 @@ export class MercadoLivreApiService {
         } else {
           messages.push(`O Mercado Livre rejeitou campos do anúncio. Detalhes: ${JSON.stringify(errorData)}`);
         }
+      } else if (errorData.error === 'validation_error' || errorData.message === 'Validation error') {
+        const extraDetails = errorData.cause?.map((c: any) => c.message || c.code).filter(Boolean).join('; ');
+        if (extraDetails) {
+          messages.push(`Erro de validação no Mercado Livre: ${extraDetails}`);
+        } else {
+          messages.push(`Erro de validação no Mercado Livre (validation_error). Verifique se todos os campos obrigatórios e opções (como Marca, Gênero e Tipo de Perfume) estão compatíveis com a categoria.`);
+        }
       } else {
         const errorLabel = errorData.error ? `${errorData.error}: ` : '';
         messages.push(`${errorLabel}${errorData.message}`);

@@ -75,8 +75,8 @@ export class CreateListingUseCase {
     // 3. Buscar atributos obrigatórios da categoria PROATIVAMENTE
     const categoryInfo = await this.mlApiService.getCategoryRequiredInfo(resolvedCategoryId as string);
 
-    // 4. Montar atributos com base nos dados do produto + atributos obrigatórios da categoria
-    const attributes = this.buildAttributes(product, categoryInfo.requiredAttributes);
+    // 4. Montar atributos com base nos dados do produto + atributos obrigatórios/catálogo da categoria
+    const attributes = this.buildAttributes(product, categoryInfo.allAttributes || categoryInfo.requiredAttributes);
 
     // Helper function to format image URL (handles Google Drive links)
     const formatImageUrl = (url: string) => {
@@ -259,40 +259,83 @@ export class CreateListingUseCase {
    * 2. mlAttributes customizados salvos pelo usuário
    * 3. Atributos obrigatórios da categoria que podem ser preenchidos automaticamente
    */
-  private buildAttributes(product: any, requiredAttributes: any[]): any[] {
+  private buildAttributes(product: any, allCategoryAttributes: any[]): any[] {
     const attributeMap = new Map<string, string>();
+
+    const isValidVal = (v: any): boolean => {
+      if (v === null || v === undefined) return false;
+      const s = String(v).trim();
+      return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined' && s !== 'Selecione...';
+    };
 
     // 1. Mapear atributos do produto usando o mapeamento automático
     for (const [attrId, extractor] of Object.entries(PRODUCT_TO_ML_ATTRIBUTE_MAP)) {
       const value = extractor(product);
-      if (value && String(value).trim() !== '') {
-        attributeMap.set(attrId, String(value));
+      if (isValidVal(value)) {
+        attributeMap.set(attrId, String(value).trim());
       }
     }
 
     // 2. Sobrescrever/adicionar com mlAttributes customizados (prioridade sobre automático)
     if (product.mlAttributes) {
       for (const [key, value] of Object.entries(product.mlAttributes)) {
-        if (value && String(value).trim() !== '') {
-          attributeMap.set(key, String(value));
+        if (isValidVal(value)) {
+          attributeMap.set(key, String(value).trim());
         }
       }
     }
 
-    // 3. Preencher atributos obrigatórios da categoria com valores padrão (se disponíveis e não já preenchidos)
-    for (const reqAttr of requiredAttributes) {
-      if (!attributeMap.has(reqAttr.id) && reqAttr.default_value) {
-        attributeMap.set(reqAttr.id, reqAttr.default_value);
+    // Normalizador inteligente para casar com os valores oficiais da categoria (ML catalog values)
+    const normalizedAttributes: any[] = [];
+    const attrLookup = new Map<string, any>();
+    for (const catAttr of (allCategoryAttributes || [])) {
+      attrLookup.set(catAttr.id, catAttr);
+    }
+
+    for (const [id, rawValue] of attributeMap.entries()) {
+      let finalVal = rawValue;
+      const catAttr = attrLookup.get(id);
+
+      // Normalização específica para PERFUME_TYPE e GENDER se o valor digitado não for exato
+      if (id === 'PERFUME_TYPE') {
+        const lower = rawValue.toLowerCase();
+        if (lower === 'edp' || lower.includes('eau de parfum')) finalVal = 'Eau de parfum';
+        else if (lower === 'edt' || lower.includes('eau de toilette')) finalVal = 'Eau de toilette';
+        else if (lower === 'edc' || lower.includes('eau de cologne')) finalVal = 'Eau de cologne';
+        else if (lower === 'parfum') finalVal = 'Parfum';
+      } else if (id === 'GENDER') {
+        const lower = rawValue.toLowerCase();
+        if (lower === 'masculino') finalVal = 'Masculino';
+        else if (lower === 'feminino') finalVal = 'Feminino';
+        else if (lower === 'unissex' || lower === 'semigênero') finalVal = 'Semigênero';
+      }
+
+      // Se a categoria tem lista de valores aceitos (catAttr.values), tentar casar com o nome oficial ou ID
+      if (catAttr && Array.isArray(catAttr.values) && catAttr.values.length > 0) {
+        const exactMatch = catAttr.values.find((v: any) => 
+          v.name.toLowerCase() === finalVal.toLowerCase() ||
+          v.id === finalVal ||
+          v.name.toLowerCase() === rawValue.toLowerCase()
+        );
+        if (exactMatch) {
+          normalizedAttributes.push({ id, value_id: exactMatch.id, value_name: exactMatch.name });
+          continue;
+        }
+      }
+
+      normalizedAttributes.push({ id, value_name: finalVal });
+    }
+
+    // 3. Preencher atributos obrigatórios da categoria com valores padrão se não foram preenchidos
+    for (const reqAttr of (allCategoryAttributes || [])) {
+      const isReq = reqAttr.required || reqAttr.tags?.required || reqAttr.tags?.catalog_required;
+      const exists = normalizedAttributes.some(a => a.id === reqAttr.id);
+      if (isReq && !exists && reqAttr.default_value) {
+        normalizedAttributes.push({ id: reqAttr.id, value_name: reqAttr.default_value });
       }
     }
 
-    // Converter o Map em array no formato que o ML aceita
-    const attributes: any[] = [];
-    for (const [id, value] of attributeMap.entries()) {
-      attributes.push({ id, value_name: value });
-    }
-
-    return attributes;
+    return normalizedAttributes;
   }
 
   /**
@@ -302,25 +345,22 @@ export class CreateListingUseCase {
   private buildActionableErrorMessage(rawError: string, categoryInfo: any): string {
     const parts: string[] = [];
 
-    // Adicionar a mensagem original do ML
-    if (rawError) {
+    if (rawError && rawError !== 'validation_error' && rawError !== 'Validation error') {
       parts.push(rawError);
+    } else {
+      parts.push('O Mercado Livre encontrou divergência na validação do anúncio.');
     }
 
-    // Se temos informações da categoria, listar os atributos obrigatórios não preenchidos
     if (categoryInfo && categoryInfo.requiredAttributes && categoryInfo.requiredAttributes.length > 0) {
       const missingHints: string[] = [];
 
-      // Verificar se a mensagem de erro menciona atributos específicos
       for (const attr of categoryInfo.requiredAttributes) {
-        if (rawError.includes(attr.id) || rawError.includes(attr.name)) {
-          const friendlyName = attr.name || attr.id;
-          missingHints.push(`• "${friendlyName}" (${attr.id}): Edite o produto e preencha este campo.`);
-        }
+        const friendlyName = attr.name || attr.id;
+        missingHints.push(`• "${friendlyName}" (${attr.id}): Verifique se este campo está preenchido com uma opção aceita.`);
       }
 
       if (missingHints.length > 0) {
-        parts.push('\n\nCampos que precisam ser preenchidos no cadastro do produto:');
+        parts.push('\nCampos obrigatórios desta categoria no Mercado Livre:');
         parts.push(missingHints.join('\n'));
       }
     }
