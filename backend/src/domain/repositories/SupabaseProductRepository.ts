@@ -1,6 +1,52 @@
 import { Product } from '../entities/Product';
 import { supabase } from '../../infrastructure/database/supabase';
 
+const formatImageUrl = (url: string | undefined): string | undefined => {
+  if (!url || typeof url !== 'string' || url.trim() === '') return undefined;
+  const trimmed = url.trim();
+
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+        return formatImageUrl(parsed[0]);
+      }
+    } catch {}
+  }
+
+  const gdriveMatch = trimmed.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=|thumbnail\?id=)([-_a-zA-Z0-9]{20,})/i);
+  if (gdriveMatch && gdriveMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${gdriveMatch[1]}&sz=w1000`;
+  }
+
+  return trimmed;
+};
+
+const getPrimaryImageUrl = (imageUrl: any, imageUrls: any): string | undefined => {
+  if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
+    const formatted = formatImageUrl(imageUrl);
+    if (formatted) return formatted;
+  }
+  if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+    for (const item of imageUrls) {
+      const formatted = formatImageUrl(item);
+      if (formatted) return formatted;
+    }
+  }
+  if (imageUrls && typeof imageUrls === 'string' && imageUrls.trim() !== '') {
+    try {
+      const parsed = JSON.parse(imageUrls);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        for (const item of parsed) {
+          const formatted = formatImageUrl(item);
+          if (formatted) return formatted;
+        }
+      }
+    } catch {}
+  }
+  return undefined;
+};
+
 export class SupabaseProductRepository {
   async createMany(products: Product[]): Promise<void> {
     const { error } = await supabase.from('products').insert(
@@ -66,7 +112,7 @@ export class SupabaseProductRepository {
       weight: Number(row.weight),
       ncm: row.ncm,
       sku: row.sku,
-      imageUrl: row.image_url,
+      imageUrl: getPrimaryImageUrl(row.image_url, row.image_urls),
       imageUrls: row.image_urls,
       condition: row.condition,
       listingTypeId: row.listing_type_id,
@@ -105,7 +151,7 @@ export class SupabaseProductRepository {
       weight: Number(data.weight),
       ncm: data.ncm,
       sku: data.sku,
-      imageUrl: data.image_url,
+      imageUrl: getPrimaryImageUrl(data.image_url, data.image_urls),
       imageUrls: data.image_urls,
       condition: data.condition,
       listingTypeId: data.listing_type_id,

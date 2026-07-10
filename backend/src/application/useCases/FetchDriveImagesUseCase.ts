@@ -108,7 +108,10 @@ export class FetchDriveImagesUseCase {
     }
 
     // 7. Update Product in Database
-    await this.productRepository.update(productId, userId, { imageUrls });
+    await this.productRepository.update(productId, userId, { 
+      imageUrls,
+      imageUrl: imageUrls.length > 0 ? imageUrls[0] : undefined 
+    });
 
     return imageUrls;
   }

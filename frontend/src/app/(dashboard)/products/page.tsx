@@ -58,6 +58,52 @@ export default function ProductsPage() {
 
         if (error) throw error;
 
+        const formatImageUrl = (url: string | undefined): string | undefined => {
+          if (!url || typeof url !== 'string' || url.trim() === '') return undefined;
+          const trimmed = url.trim();
+
+          if (trimmed.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+                return formatImageUrl(parsed[0]);
+              }
+            } catch {}
+          }
+
+          const gdriveMatch = trimmed.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=|thumbnail\?id=)([-_a-zA-Z0-9]{20,})/i);
+          if (gdriveMatch && gdriveMatch[1]) {
+            return `https://drive.google.com/thumbnail?id=${gdriveMatch[1]}&sz=w1000`;
+          }
+
+          return trimmed;
+        };
+
+        const getPrimaryImageUrl = (imageUrl: any, imageUrls: any): string | undefined => {
+          if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
+            const formatted = formatImageUrl(imageUrl);
+            if (formatted) return formatted;
+          }
+          if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+            for (const item of imageUrls) {
+              const formatted = formatImageUrl(item);
+              if (formatted) return formatted;
+            }
+          }
+          if (imageUrls && typeof imageUrls === 'string' && imageUrls.trim() !== '') {
+            try {
+              const parsed = JSON.parse(imageUrls);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                for (const item of parsed) {
+                  const formatted = formatImageUrl(item);
+                  if (formatted) return formatted;
+                }
+              }
+            } catch {}
+          }
+          return undefined;
+        };
+
         const mappedData = data.map(d => ({
           id: d.id,
           name: d.name,
@@ -65,7 +111,7 @@ export default function ProductsPage() {
           brand: d.brand,
           price: Number(d.price),
           quantity: Number(d.quantity),
-          imageUrl: d.image_url,
+          imageUrl: getPrimaryImageUrl(d.image_url, d.image_urls),
           sku: d.sku,
           customId: d.custom_id,
           ncm: d.ncm,
@@ -388,9 +434,23 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4 min-w-[250px]">
-                      <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md border border-border flex items-center justify-center overflow-hidden">
+                      <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md border border-border flex items-center justify-center overflow-hidden relative">
                         {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+                          <>
+                            <img 
+                              src={product.imageUrl} 
+                              alt={product.name} 
+                              className="h-full w-full object-cover" 
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
+                                if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                              }}
+                            />
+                            <div className="fallback-icon hidden h-full w-full items-center justify-center">
+                              <PackageSearch className="h-5 w-5 text-muted-foreground/50" />
+                            </div>
+                          </>
                         ) : (
                           <PackageSearch className="h-5 w-5 text-muted-foreground/50" />
                         )}
