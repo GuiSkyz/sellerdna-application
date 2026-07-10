@@ -124,15 +124,41 @@ export class CreateListingUseCase {
 
     if (!initialValidation.valid) {
       const errorStr = String(initialValidation.error || '');
-      if (errorStr.includes('family_name')) {
-        // Ajusta payload com family_name para contas/categorias em User Products
-        payloadToCreate = {
-          ...payloadToCreate,
+      const rawErrStr = JSON.stringify(initialValidation.rawError || {});
+
+      const isUserProductsModelError =
+        errorStr.includes('family_name') ||
+        rawErrStr.includes('family_name') ||
+        errorStr.includes('fields [title] are invalid') ||
+        errorStr.includes('The fields [title] are invalid') ||
+        rawErrStr.includes('fields [title] are invalid') ||
+        rawErrStr.includes('The fields [title] are invalid') ||
+        (rawErrStr.includes('body.invalid_fields') && rawErrStr.includes('title'));
+
+      if (isUserProductsModelError) {
+        // No modelo User Products (ou categorias migradas), a API rejeita "title" no nível superior.
+        // Devemos remover "title" e enviar "family_name".
+        const { title: _removedTitle, ...restPayload } = payloadToCreate;
+        const userProductsPayload = {
+          ...restPayload,
           family_name: title.substring(0, 60),
         };
-        const secondValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
-        if (!secondValidation.valid) {
-          throw new Error(secondValidation.error || 'Falha na validação do anúncio no Mercado Livre.');
+
+        const secondValidation = await this.mlApiService.validateItem(accountToken, userProductsPayload);
+        if (secondValidation.valid) {
+          payloadToCreate = userProductsPayload;
+        } else {
+          // Caso alguma categoria específica exija tanto title quanto family_name
+          const payloadWithBoth = {
+            ...userProductsPayload,
+            title: title.substring(0, 60),
+          };
+          const thirdValidation = await this.mlApiService.validateItem(accountToken, payloadWithBoth);
+          if (thirdValidation.valid) {
+            payloadToCreate = payloadWithBoth;
+          } else {
+            throw new Error(secondValidation.error || initialValidation.error || 'Falha na validação do anúncio no Mercado Livre.');
+          }
         }
       } else {
         throw new Error(initialValidation.error || 'Falha na validação do anúncio no Mercado Livre.');
@@ -140,7 +166,28 @@ export class CreateListingUseCase {
     }
 
     // 5. Call ML API to create item de forma segura após aprovação na validação
-    const mlResponse = await this.mlApiService.createItem(accountToken, payloadToCreate);
+    let mlResponse;
+    try {
+      mlResponse = await this.mlApiService.createItem(accountToken, payloadToCreate);
+    } catch (createErr: any) {
+      const errMsg = String(createErr?.message || createErr || '');
+      const isUserProductsCreateError =
+        errMsg.includes('family_name') ||
+        errMsg.includes('fields [title] are invalid') ||
+        errMsg.includes('The fields [title] are invalid') ||
+        (errMsg.includes('body.invalid_fields') && errMsg.includes('title'));
+
+      if (isUserProductsCreateError && payloadToCreate.title) {
+        const { title: _removedTitle, ...restPayload } = payloadToCreate;
+        const retryPayload = {
+          ...restPayload,
+          family_name: title.substring(0, 60),
+        };
+        mlResponse = await this.mlApiService.createItem(accountToken, retryPayload);
+      } else {
+        throw createErr;
+      }
+    }
     
     // 4.1. Call ML API to add description (ML requires this to be a separate call)
     if (description && description.trim() !== '') {
@@ -164,7 +211,7 @@ export class CreateListingUseCase {
       accountId: accountId,
       productId: product.id,
       mlItemId: mlResponse.id,
-      title: mlResponse.title,
+      title: mlResponse.title || mlResponse.family_name || title,
       price: mlResponse.price,
       availableQuantity: mlResponse.available_quantity,
       status: mlResponse.status,

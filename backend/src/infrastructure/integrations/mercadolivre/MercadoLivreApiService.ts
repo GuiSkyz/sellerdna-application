@@ -91,8 +91,12 @@ export class MercadoLivreApiService {
       }
     }
 
-    if (!friendlyMessage && errorData?.message) {
-      friendlyMessage = `${errorData.message} - Detalhes do ML: ${JSON.stringify(errorData)}`;
+    if (!friendlyMessage && errorData) {
+      if (errorData.error && errorData.message) {
+        friendlyMessage = `${errorData.error} (${errorData.message})`;
+      } else if (errorData.message) {
+        friendlyMessage = `${errorData.message} - Detalhes do ML: ${JSON.stringify(errorData)}`;
+      }
     }
 
     return {
