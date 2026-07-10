@@ -6,27 +6,36 @@ import { UploadCloud, CheckCircle2, AlertCircle } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
 
+interface MLAccount {
+  id: string;
+  user_id?: string;
+  ml_user_id?: string;
+  nickname?: string;
+  [key: string]: unknown;
+}
+
 function SettingsContent() {
-  const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<MLAccount[]>([]);
   const [driveFolderId, setDriveFolderId] = useState('');
   const [savingDrive, setSavingDrive] = useState(false);
 
   useEffect(() => {
-    const isConnected = searchParams.get('ml_connected');
-    const isGdriveConnected = searchParams.get('gdrive');
-    const hasError = searchParams.get('error');
+    queueMicrotask(() => {
+      const isConnected = searchParams.get('ml_connected');
+      const isGdriveConnected = searchParams.get('gdrive');
+      const hasError = searchParams.get('error');
 
-    if (isConnected === 'true') {
-      setSuccessMsg('Sua conta do Mercado Livre foi conectada com sucesso!');
-    } else if (isGdriveConnected === 'success') {
-      setSuccessMsg('Configurações do Google Drive salvas com sucesso!');
-    } else if (isConnected === 'false' || hasError) {
-      setErrorMsg('Não foi possível conectar a conta. Tente novamente.');
-    }
+      if (isConnected === 'true') {
+        setSuccessMsg('Sua conta do Mercado Livre foi conectada com sucesso!');
+      } else if (isGdriveConnected === 'success') {
+        setSuccessMsg('Configurações do Google Drive salvas com sucesso!');
+      } else if (isConnected === 'false' || hasError) {
+        setErrorMsg('Não foi possível conectar a conta. Tente novamente.');
+      }
+    });
   }, [searchParams]);
 
   useEffect(() => {
@@ -45,7 +54,7 @@ function SettingsContent() {
         if (mlError) throw mlError;
         setAccounts(mlData || []);
 
-        const { data: userRecord, error: userError } = await supabase
+        const { data: userRecord } = await supabase
           .from('users')
           .select('drive_folder_id')
           .eq('id', user.id)
@@ -162,7 +171,7 @@ function SettingsContent() {
                   Para que o SellerDNA consiga importar automaticamente as fotos dos seus perfumes do Google Drive, siga os passos abaixo:
                 </p>
                 <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
-                  <li>Crie uma pasta no seu Google Drive (ex: "BD Cosméticos").</li>
+                  <li>Crie uma pasta no seu Google Drive (ex: &quot;BD Cosméticos&quot;).</li>
                   <li>Compartilhe essa pasta com o nosso robô: <span className="font-semibold text-primary select-all">drivephotos@mystic-producer-485015-j6.iam.gserviceaccount.com</span> (Acesso de Leitor).</li>
                   <li>Cole o link ou ID dessa pasta no campo abaixo.</li>
                 </ol>

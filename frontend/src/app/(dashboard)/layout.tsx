@@ -1,7 +1,6 @@
 import { DashboardLayoutWrapper } from "@/components/layout/DashboardLayoutWrapper";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 
 export default async function DashboardLayout({
   children,

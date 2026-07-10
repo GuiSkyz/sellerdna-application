@@ -5,8 +5,29 @@ import { Play, Pause, TrendingUp, Package, Activity, Plus } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import Link from 'next/link';
 
+interface ActivityItem {
+  id: string;
+  action: string;
+  description: string;
+  created_at?: string;
+  date?: string | number | Date;
+}
+
+interface DashboardMetrics {
+  totalListings?: number;
+  activeListings?: number;
+  pausedListings?: number;
+  totalDuplicatedAI?: number;
+  totalProducts?: number;
+  activeAds?: number;
+  pausedAds?: number;
+  syncRate?: number;
+  recentActivities: ActivityItem[];
+  [key: string]: unknown;
+}
+
 export default function DashboardPage() {
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,10 +72,10 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Anúncios Lidos', value: metrics?.totalListings || 0, icon: Package },
-          { label: 'Ativos no ML', value: metrics?.activeListings || 0, icon: Play },
-          { label: 'Pausados', value: metrics?.pausedListings || 0, icon: Pause },
-          { label: 'Gerados por IA', value: metrics?.totalDuplicatedAI || 0, icon: TrendingUp },
+          { label: 'Anúncios Lidos', value: Number(metrics?.totalListings || 0), icon: Package },
+          { label: 'Ativos no ML', value: Number(metrics?.activeListings || 0), icon: Play },
+          { label: 'Pausados', value: Number(metrics?.pausedListings || 0), icon: Pause },
+          { label: 'Gerados por IA', value: Number(metrics?.totalDuplicatedAI || 0), icon: TrendingUp },
         ].map((card, idx) => (
           <div key={idx} className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
@@ -82,7 +103,7 @@ export default function DashboardPage() {
             <h2 className="text-base font-semibold text-foreground">Atividades Recentes</h2>
           </div>
           <div className="space-y-6 flex-1 overflow-y-auto pr-2">
-            {metrics?.recentActivities?.map((activity: any, index: number) => (
+            {metrics?.recentActivities?.map((activity: ActivityItem, index: number) => (
               <div key={activity.id} className="flex gap-4 group">
                 <div className="flex flex-col items-center mt-1">
                   <div className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/10"></div>
@@ -94,7 +115,7 @@ export default function DashboardPage() {
                   <p className="font-medium text-foreground text-sm leading-none">{activity.action}</p>
                   <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{activity.description}</p>
                   <p className="text-[10px] text-muted-foreground/60 mt-1.5 uppercase font-medium tracking-wider">
-                    {new Date(activity.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                    {new Date(activity.date || activity.created_at || Date.now()).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                   </p>
                 </div>
               </div>

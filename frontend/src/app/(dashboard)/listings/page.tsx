@@ -19,12 +19,20 @@ interface Listing {
   created_at: string;
 }
 
+interface MLAccount {
+  id: string;
+  user_id?: string;
+  ml_user_id?: string;
+  nickname?: string;
+  [key: string]: unknown;
+}
+
 export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<MLAccount[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchListings = async () => {
@@ -54,8 +62,10 @@ export default function ListingsPage() {
   };
 
   useEffect(() => {
-    fetchAccounts();
-    fetchListings();
+    const init = async () => {
+      await Promise.all([fetchAccounts(), fetchListings()]);
+    };
+    init();
   }, []);
 
   const handleSync = async () => {

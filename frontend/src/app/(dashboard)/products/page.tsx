@@ -19,6 +19,15 @@ interface Product {
   mlListingsCount?: number;
 }
 
+interface BulkPublishResult {
+  name?: string;
+  success?: boolean;
+  mlItemId?: string;
+  error?: string;
+  permalink?: string;
+  [key: string]: unknown;
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +49,7 @@ export default function ProductsPage() {
   const [isBulkPublishOpen, setIsBulkPublishOpen] = useState(false);
   const [isBulkPublishing, setIsBulkPublishing] = useState(false);
   const [bulkPublishProgress, setBulkPublishProgress] = useState('');
-  const [bulkPublishResults, setBulkPublishResults] = useState<any[] | null>(null);
+  const [bulkPublishResults, setBulkPublishResults] = useState<BulkPublishResult[] | null>(null);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -79,7 +88,7 @@ export default function ProductsPage() {
           return trimmed;
         };
 
-        const getPrimaryImageUrl = (imageUrl: any, imageUrls: any): string | undefined => {
+        const getPrimaryImageUrl = (imageUrl: unknown, imageUrls: unknown): string | undefined => {
           if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
             const formatted = formatImageUrl(imageUrl);
             if (formatted) return formatted;
@@ -201,7 +210,7 @@ export default function ProductsPage() {
     setIsBulkEditing(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-      const payload: any = { ids: selectedIds };
+      const payload: Record<string, unknown> = { ids: selectedIds };
       if (updatePriceChecked) payload.price = Number(bulkPrice);
       if (updateQuantityChecked) payload.quantity = Number(bulkQuantity);
       if (updateMlCategoryIdChecked) payload.mlCategoryId = bulkMlCategoryId;
@@ -253,9 +262,9 @@ export default function ProductsPage() {
       
       setBulkPublishResults(data.results || []);
       setBulkPublishProgress('Concluído!');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(err.message || 'Falha na publicação em lote.');
+      alert(err instanceof Error ? err.message : 'Falha na publicação em lote.');
       setIsBulkPublishOpen(false);
     } finally {
       setIsBulkPublishing(false);
@@ -310,9 +319,9 @@ export default function ProductsPage() {
                       const data = await res.json();
                       if (!res.ok) throw new Error(data.error || 'Falha desconhecida');
                       imported++;
-                    } catch (e: any) {
+                    } catch (e: unknown) {
                       console.error(`Falha ao importar foto do produto ${id}`, e);
-                      alert(`Erro ao importar fotos do produto ID ${id}: ${e.message}`);
+                      alert(`Erro ao importar fotos do produto ID ${id}: ${e instanceof Error ? e.message : 'Erro'}`);
                     }
                   }
                   if (imported > 0) {
@@ -338,8 +347,8 @@ export default function ProductsPage() {
                     if (!res.ok) throw new Error('Erro ao limpar fotos');
                     alert(`Fotos removidas de ${selectedIds.length} produtos.`);
                     window.location.reload();
-                  } catch (e: any) {
-                    alert(`Erro ao remover fotos: ${e.message}`);
+                  } catch (e: unknown) {
+                    alert(`Erro ao remover fotos: ${e instanceof Error ? e.message : 'Erro'}`);
                   }
                 }}
                 className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-orange-500/20 flex items-center gap-2"

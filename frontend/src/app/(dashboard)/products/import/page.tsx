@@ -5,13 +5,30 @@ import { ExcelUploader } from '@/components/features/ExcelUploader';
 import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
+interface ImportedProduct {
+  customId?: string;
+  name: string;
+  brand?: string;
+  sizeMl?: string;
+  perfumeType?: string;
+  price: number;
+  quantity: number;
+  gender?: string;
+  expirationDate?: string;
+  weight?: number;
+  ncm?: string;
+  sku?: string;
+  imageUrl?: string;
+  [key: string]: unknown;
+}
+
 export default function ImportProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<ImportedProduct[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [successCount, setSuccessCount] = useState<number | null>(null);
 
-  const handleDataParsed = (data: any[]) => {
-    setProducts(data);
+  const handleDataParsed = (data: Record<string, unknown>[]) => {
+    setProducts(data as ImportedProduct[]);
     setSuccessCount(null);
   };
 

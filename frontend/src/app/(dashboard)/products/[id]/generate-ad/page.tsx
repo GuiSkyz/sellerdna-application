@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Sparkles, Loader2, Save, ExternalLink, ChevronRight, Star, Heart, Check, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Sparkles, Loader2, Save, ExternalLink, Star, Heart, Check, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
@@ -15,7 +15,7 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const [productData, setProductData] = useState<any>(null);
+  const [productData, setProductData] = useState<Record<string, unknown> | null>(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -34,8 +34,8 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
         
         setProductData(data);
         setFormData(prev => ({ ...prev, price: data.price, stock: data.quantity }));
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar produto');
       } finally {
         setLoading(false);
       }
@@ -60,14 +60,15 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
         title: data.generatedAd.optimizedTitle,
         description: data.generatedAd.optimizedDescription
       }));
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao gerar copy');
     } finally {
       setGenerating(false);
     }
   };
 
   const handlePublish = async () => {
+    if (!productData) return;
     setPublishing(true);
     setError(null);
     setSuccessMessage(null);
@@ -95,8 +96,8 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
       
       setSuccessMessage('Anúncio publicado com sucesso no Mercado Livre!');
       setTimeout(() => router.push('/products'), 2000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao publicar no Mercado Livre');
       setPublishing(false);
     }
   };
@@ -255,7 +256,7 @@ export default function GenerateAdPage({ params }: { params: Promise<{ id: strin
               <div className="flex-1 overflow-y-auto bg-white pb-20">
                 <div className="aspect-square bg-zinc-100 flex items-center justify-center">
                   {productData?.imageUrl ? (
-                    <img src={productData.imageUrl} alt="Produto" className="object-contain w-full h-full" />
+                    <img src={String(productData.imageUrl)} alt="Produto" className="object-contain w-full h-full" />
                   ) : (
                     <span className="text-zinc-400">Sem Foto</span>
                   )}

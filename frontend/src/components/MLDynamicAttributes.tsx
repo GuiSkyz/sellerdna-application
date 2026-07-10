@@ -5,11 +5,12 @@ import { Loader2, Search, AlertCircle } from 'lucide-react';
 interface MLAttribute {
   id: string;
   name: string;
-  value_type: string;
-  tags: {
+  value_type?: string;
+  tags?: {
     required?: boolean;
     catalog_required?: boolean;
   };
+  values?: { id: string; name: string }[];
   values_list?: Array<{ id: string; name: string }>;
 }
 
@@ -17,7 +18,7 @@ interface MLDynamicAttributesProps {
   title: string;
   categoryId: string;
   categoryName: string;
-  attributesData: Record<string, any>;
+  attributesData: Record<string, unknown>;
   onCategorySelected: (categoryId: string, categoryName: string) => void;
   onAttributeChange: (key: string, value: string) => void;
 }
@@ -55,45 +56,42 @@ export function MLDynamicAttributes({
         onCategorySelected(data.id, data.name || data.id);
         await loadAttributes(data.id);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao prever categoria');
     } finally {
       setLoadingCategory(false);
     }
   };
 
-  const loadAttributes = async (id: string) => {
+  const loadAttributes = React.useCallback(async (id: string) => {
     setLoadingAttributes(true);
     try {
       const res = await authenticatedFetch(`${apiUrl}/api/ml/categories/${id}/attributes`);
       if (!res.ok) throw new Error('Erro ao carregar atributos da categoria');
       
-      const data = await res.json();
-      // Filtrar apenas atributos relevantes e OBRIGATÓRIOS (excluir GTIN e Garantia que já estão fixos)
-      const filtered = data.filter((attr: any) => {
+      const data: MLAttribute[] = await res.json();
+      const filtered = data.filter((attr: MLAttribute) => {
         const isRequired = attr.tags?.required || attr.tags?.catalog_required;
         const isAlreadyHandled = ['GTIN', 'WARRANTY_TYPE', 'WARRANTY_TIME', 'ITEM_CONDITION'].includes(attr.id);
         
         return isRequired && !isAlreadyHandled;
       });
       
-      // Sort: Alfabetico já que todos agora são obrigatorios
-      filtered.sort((a: any, b: any) => a.name.localeCompare(b.name));
+      filtered.sort((a: MLAttribute, b: MLAttribute) => a.name.localeCompare(b.name));
 
       setAttributesList(filtered);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar atributos');
     } finally {
       setLoadingAttributes(false);
     }
-  };
+  }, [apiUrl]);
 
-  // Se já tiver um categoryId na montagem e a lista de atributos estiver vazia, tenta carregar
   React.useEffect(() => {
     if (categoryId && attributesList.length === 0) {
       loadAttributes(categoryId);
     }
-  }, [categoryId]);
+  }, [categoryId, attributesList.length, loadAttributes]);
 
   return (
     <div className="space-y-4">
@@ -146,7 +144,7 @@ export function MLDynamicAttributes({
                   
                   {attr.values_list && attr.values_list.length > 0 ? (
                     <select
-                      value={attributesData[attr.id] || ''}
+                      value={String(attributesData[attr.id] || '')}
                       onChange={(e) => onAttributeChange(attr.id, e.target.value)}
                       className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
                     >
@@ -157,7 +155,7 @@ export function MLDynamicAttributes({
                     </select>
                   ) : attr.value_type === 'boolean' ? (
                     <select
-                      value={attributesData[attr.id] || ''}
+                      value={String(attributesData[attr.id] || '')}
                       onChange={(e) => onAttributeChange(attr.id, e.target.value)}
                       className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
                     >
@@ -168,7 +166,7 @@ export function MLDynamicAttributes({
                   ) : (
                     <input
                       type={attr.value_type === 'number_unit' ? 'text' : 'text'}
-                      value={attributesData[attr.id] || ''}
+                      value={String(attributesData[attr.id] || '')}
                       onChange={(e) => onAttributeChange(attr.id, e.target.value)}
                       placeholder={`Ex: ${attr.name}`}
                       className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"

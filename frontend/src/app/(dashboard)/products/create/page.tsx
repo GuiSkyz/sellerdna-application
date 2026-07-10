@@ -33,7 +33,7 @@ export default function CreateProductPage() {
     warrantyTime: '30 dias',
     mlCategoryId: '',
     mlCategoryName: '',
-    mlAttributes: {} as Record<string, any>
+    mlAttributes: {} as Record<string, unknown>
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -80,8 +80,8 @@ export default function CreateProductPage() {
       }
       
       router.push('/products');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar produto');
       setSaving(false);
     }
   };

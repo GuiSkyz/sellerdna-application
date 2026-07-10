@@ -40,7 +40,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     warrantyTime: '30 dias',
     mlCategoryId: '',
     mlCategoryName: '',
-    mlAttributes: {} as Record<string, any>
+    mlAttributes: {} as Record<string, unknown>
   });
 
   useEffect(() => {
@@ -85,14 +85,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           mlCategoryName: '', // Loaded by the component if mlCategoryId is present
           mlAttributes: data.ml_attributes || {}
         });
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar produto');
       } finally {
         setLoading(false);
       }
     }
     fetchProduct();
-  }, [unwrappedParams?.id]);
+  }, [unwrappedParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -133,8 +133,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       if (!res.ok) throw new Error('Erro ao salvar produto');
       
       router.push('/products');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar produto');
       setSaving(false);
     }
   };
@@ -156,8 +156,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       
       setFormData(prev => ({ ...prev, imageUrls: data.imageUrls }));
       alert(`Foram encontradas e vinculadas ${data.imageUrls.length} fotos! Salve as alterações para confirmar.`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao buscar imagens');
     } finally {
       setFetchingDrive(false);
     }

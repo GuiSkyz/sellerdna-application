@@ -2,15 +2,14 @@
 
 import React, { useCallback, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { UploadCloud, File, X, AlertCircle } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 
 interface ExcelUploaderProps {
-  onDataParsed: (data: any[]) => void;
+  onDataParsed: (data: Record<string, unknown>[]) => void;
 }
 
 export function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -23,13 +22,12 @@ export function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
     setIsDragging(false);
   }, []);
 
-  const processFile = (file: File) => {
+  const processFile = useCallback((file: File) => {
     if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
       setError('Por favor, faça upload apenas de arquivos Excel (.xlsx, .xls) ou CSV.');
       return;
     }
 
-    setFileName(file.name);
     setError(null);
 
     const reader = new FileReader();
@@ -40,11 +38,9 @@ export function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Converte a planilha para JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' });
         
-        // Mapeia para o formato esperado pela API, ignorando linhas vazias sem nome
-        const mappedData = jsonData.map((row: any) => ({
+        const mappedData = jsonData.map((row: Record<string, unknown>) => ({
           customId: String(row['ID'] || row['Id'] || row['id'] || ''),
           name: row['NOME'] || row['Nome'] || '',
           brand: row['MARCA'] || row['Marca'] || '',
@@ -71,7 +67,7 @@ export function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
       }
     };
     reader.readAsBinaryString(file);
-  };
+  }, [onDataParsed]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -80,19 +76,13 @@ export function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
     if (files && files.length > 0) {
       processFile(files[0]);
     }
-  }, []);
+  }, [processFile]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       processFile(files[0]);
     }
-  };
-
-  const reset = () => {
-    setFileName(null);
-    setError(null);
-    onDataParsed([]);
   };
 
   return (

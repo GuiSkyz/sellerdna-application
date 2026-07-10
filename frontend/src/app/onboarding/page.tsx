@@ -1,14 +1,13 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { ConnectMLButton } from '@/components/features/ConnectMLButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Store } from 'lucide-react';
+import { Store, AlertCircle } from 'lucide-react';
 
 function OnboardingContent() {
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {

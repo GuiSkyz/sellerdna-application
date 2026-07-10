@@ -7,10 +7,10 @@ import { LayoutDashboard, PackageSearch, UploadCloud, Settings, Box, Store } fro
 
 interface SidebarProps {
   isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  setIsOpen?: (isOpen: boolean) => void;
 }
 
-export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
+export function Sidebar({ isOpen }: SidebarProps) {
   const pathname = usePathname();
 
   const navItems = [
