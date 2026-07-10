@@ -33,6 +33,17 @@ export class CreateListingUseCase {
 
     // 2. Resolve Category ID (Inference if missing)
     let resolvedCategoryId: string | undefined | null = product.mlCategoryId || categoryId;
+    if (resolvedCategoryId) {
+      const trimmed = resolvedCategoryId.trim().toUpperCase();
+      const match = trimmed.match(/(ML[A-Z])-?(\d+)/);
+      if (match) {
+        resolvedCategoryId = `${match[1]}${match[2]}`;
+      } else if (/^\d+$/.test(trimmed)) {
+        resolvedCategoryId = `MLB${trimmed}`;
+      } else {
+        resolvedCategoryId = trimmed;
+      }
+    }
     if (!resolvedCategoryId) {
       resolvedCategoryId = await this.mlApiService.predictCategory(title);
       if (!resolvedCategoryId) {

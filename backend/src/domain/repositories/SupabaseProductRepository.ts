@@ -202,11 +202,40 @@ export class SupabaseProductRepository {
     return this.getById(id, userId);
   }
 
-  async updateManyProducts(ids: string[], userId: string, updateData: { price?: number; quantity?: number; clearImage?: boolean; mlCategoryId?: string }): Promise<void> {
+  async updateManyProducts(
+    ids: string[],
+    userId: string,
+    updateData: {
+      price?: number;
+      quantity?: number;
+      clearImage?: boolean;
+      mlCategoryId?: string;
+      brand?: string;
+      ncm?: string;
+      gtin?: string;
+      condition?: string;
+      listingTypeId?: string;
+      warrantyType?: string;
+      warrantyTime?: string;
+      perfumeType?: string;
+      gender?: string;
+      sizeMl?: string;
+    }
+  ): Promise<void> {
     const mapToSnakeCase: any = {};
     if (updateData.price !== undefined) mapToSnakeCase.price = updateData.price;
     if (updateData.quantity !== undefined) mapToSnakeCase.quantity = updateData.quantity;
     if (updateData.mlCategoryId !== undefined) mapToSnakeCase.ml_category_id = updateData.mlCategoryId;
+    if (updateData.brand !== undefined) mapToSnakeCase.brand = updateData.brand;
+    if (updateData.ncm !== undefined) mapToSnakeCase.ncm = updateData.ncm;
+    if (updateData.gtin !== undefined) mapToSnakeCase.gtin = updateData.gtin;
+    if (updateData.condition !== undefined) mapToSnakeCase.condition = updateData.condition;
+    if (updateData.listingTypeId !== undefined) mapToSnakeCase.listing_type_id = updateData.listingTypeId;
+    if (updateData.warrantyType !== undefined) mapToSnakeCase.warranty_type = updateData.warrantyType;
+    if (updateData.warrantyTime !== undefined) mapToSnakeCase.warranty_time = updateData.warrantyTime;
+    if (updateData.perfumeType !== undefined) mapToSnakeCase.perfume_type = updateData.perfumeType;
+    if (updateData.gender !== undefined) mapToSnakeCase.gender = updateData.gender;
+    if (updateData.sizeMl !== undefined) mapToSnakeCase.size_ml = updateData.sizeMl;
     if (updateData.clearImage) {
       mapToSnakeCase.image_url = null;
       mapToSnakeCase.image_urls = [];

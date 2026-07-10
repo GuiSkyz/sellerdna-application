@@ -30,6 +30,14 @@ CREATE TABLE IF NOT EXISTS public.products (
   sku TEXT,
   image_url TEXT,
   image_urls JSONB DEFAULT '[]'::jsonb,
+  custom_id TEXT,
+  condition TEXT DEFAULT 'Novo',
+  listing_type_id TEXT DEFAULT 'gold_special',
+  gtin TEXT,
+  warranty_type TEXT DEFAULT 'Garantia do vendedor',
+  warranty_time TEXT DEFAULT '30 dias',
+  ml_category_id TEXT,
+  ml_attributes JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

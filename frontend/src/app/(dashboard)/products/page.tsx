@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
 interface Product {
@@ -38,12 +38,38 @@ export default function ProductsPage() {
   const ITEMS_PER_PAGE = 10;
 
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [bulkTab, setBulkTab] = useState<'comercial' | 'anuncio' | 'fiscal' | 'specs'>('comercial');
+
+  // Estados de valores - Edição em Massa
   const [bulkPrice, setBulkPrice] = useState('');
   const [bulkQuantity, setBulkQuantity] = useState('');
   const [bulkMlCategoryId, setBulkMlCategoryId] = useState('');
+  const [bulkListingTypeId, setBulkListingTypeId] = useState('gold_special');
+  const [bulkCondition, setBulkCondition] = useState('new');
+  const [bulkBrand, setBulkBrand] = useState('');
+  const [bulkGtin, setBulkGtin] = useState('');
+  const [bulkNcm, setBulkNcm] = useState('');
+  const [bulkPerfumeType, setBulkPerfumeType] = useState('Eau de Parfum');
+  const [bulkGender, setBulkGender] = useState('Unissex');
+  const [bulkSizeMl, setBulkSizeMl] = useState('100');
+  const [bulkWarrantyType, setBulkWarrantyType] = useState('Garantia do vendedor');
+  const [bulkWarrantyTime, setBulkWarrantyTime] = useState('30 dias');
+
+  // Estados de ativação (check por atributo estilo Tiny ERP)
   const [updatePriceChecked, setUpdatePriceChecked] = useState(false);
   const [updateQuantityChecked, setUpdateQuantityChecked] = useState(false);
   const [updateMlCategoryIdChecked, setUpdateMlCategoryIdChecked] = useState(false);
+  const [updateListingTypeIdChecked, setUpdateListingTypeIdChecked] = useState(false);
+  const [updateConditionChecked, setUpdateConditionChecked] = useState(false);
+  const [updateBrandChecked, setUpdateBrandChecked] = useState(false);
+  const [updateGtinChecked, setUpdateGtinChecked] = useState(false);
+  const [updateNcmChecked, setUpdateNcmChecked] = useState(false);
+  const [updatePerfumeTypeChecked, setUpdatePerfumeTypeChecked] = useState(false);
+  const [updateGenderChecked, setUpdateGenderChecked] = useState(false);
+  const [updateSizeMlChecked, setUpdateSizeMlChecked] = useState(false);
+  const [updateWarrantyTypeChecked, setUpdateWarrantyTypeChecked] = useState(false);
+  const [updateWarrantyTimeChecked, setUpdateWarrantyTimeChecked] = useState(false);
+
   const [isBulkEditing, setIsBulkEditing] = useState(false);
 
   const [isBulkPublishOpen, setIsBulkPublishOpen] = useState(false);
@@ -200,10 +226,26 @@ export default function ProductsPage() {
     }
   };
 
+  const activeBulkCount = [
+    updatePriceChecked,
+    updateQuantityChecked,
+    updateMlCategoryIdChecked,
+    updateListingTypeIdChecked,
+    updateConditionChecked,
+    updateBrandChecked,
+    updateGtinChecked,
+    updateNcmChecked,
+    updatePerfumeTypeChecked,
+    updateGenderChecked,
+    updateSizeMlChecked,
+    updateWarrantyTypeChecked,
+    updateWarrantyTimeChecked
+  ].filter(Boolean).length;
+
   const handleBulkUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!updatePriceChecked && !updateQuantityChecked && !updateMlCategoryIdChecked) {
-      alert('Selecione pelo menos um campo para atualizar.');
+    if (activeBulkCount === 0) {
+      alert('Selecione pelo menos um atributo para atualizar em massa.');
       return;
     }
     
@@ -213,7 +255,26 @@ export default function ProductsPage() {
       const payload: Record<string, unknown> = { ids: selectedIds };
       if (updatePriceChecked) payload.price = Number(bulkPrice);
       if (updateQuantityChecked) payload.quantity = Number(bulkQuantity);
-      if (updateMlCategoryIdChecked) payload.mlCategoryId = bulkMlCategoryId;
+      if (updateMlCategoryIdChecked) {
+        let cleanCat = bulkMlCategoryId.trim().toUpperCase();
+        const mlMatch = cleanCat.match(/(ML[A-Z])-?(\d+)/);
+        if (mlMatch) {
+          cleanCat = `${mlMatch[1]}${mlMatch[2]}`;
+        } else if (/^\d+$/.test(cleanCat)) {
+          cleanCat = `MLB${cleanCat}`;
+        }
+        payload.mlCategoryId = cleanCat;
+      }
+      if (updateListingTypeIdChecked) payload.listingTypeId = bulkListingTypeId;
+      if (updateConditionChecked) payload.condition = bulkCondition;
+      if (updateBrandChecked) payload.brand = bulkBrand;
+      if (updateGtinChecked) payload.gtin = bulkGtin;
+      if (updateNcmChecked) payload.ncm = bulkNcm;
+      if (updatePerfumeTypeChecked) payload.perfumeType = bulkPerfumeType;
+      if (updateGenderChecked) payload.gender = bulkGender;
+      if (updateSizeMlChecked) payload.sizeMl = bulkSizeMl;
+      if (updateWarrantyTypeChecked) payload.warrantyType = bulkWarrantyType;
+      if (updateWarrantyTimeChecked) payload.warrantyTime = bulkWarrantyTime;
 
       const res = await authenticatedFetch(`${apiUrl}/api/products/bulk-update`, {
         method: 'POST',
@@ -221,15 +282,19 @@ export default function ProductsPage() {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error('Erro ao atualizar em massa');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Erro ao atualizar em massa');
+      }
       
-      alert('Produtos atualizados com sucesso!');
+      alert(`${selectedIds.length} produto(s) atualizado(s) com sucesso!`);
       setIsBulkEditOpen(false);
       setSelectedIds([]);
       window.location.reload();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      alert('Falha ao atualizar os produtos.');
+      const msg = err instanceof Error ? err.message : 'Falha ao atualizar os produtos selecionados.';
+      alert(`Falha ao atualizar em massa: ${msg}`);
     } finally {
       setIsBulkEditing(false);
     }
@@ -559,107 +624,496 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Modal Edição em Massa */}
+      {/* Modal Edição em Massa (Inspirado no Tiny ERP) */}
       {isBulkEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative animate-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
-              <Edit className="w-5 h-5 text-primary" />
-              Edição em Massa ({selectedIds.length} selecionados)
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              Selecione quais campos deseja alterar em todos os produtos marcados. Os campos não marcados permanecerão inalterados.
-            </p>
-            
-            <form onSubmit={handleBulkUpdate} className="space-y-6">
-              {/* Preço */}
-              <div className="space-y-3 p-3 border border-border rounded-xl bg-muted/10">
-                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-foreground">
-                  <input 
-                    type="checkbox" 
-                    checked={updatePriceChecked} 
-                    onChange={(e) => setUpdatePriceChecked(e.target.checked)} 
-                    className="rounded border-border text-primary focus:ring-primary cursor-pointer h-4 w-4"
-                  />
-                  <span>Alterar Preço de Venda (R$)</span>
-                </label>
-                {updatePriceChecked && (
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    min="0"
-                    required
-                    value={bulkPrice}
-                    onChange={(e) => setBulkPrice(e.target.value)}
-                    placeholder="Ex: 149.90"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground"
-                  />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-6 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Edit className="w-5 h-5 text-primary" />
+                  <h3 className="text-xl font-bold text-foreground">Edição em Massa de Produtos</h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                    Estilo Tiny ERP
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedIds.length} {selectedIds.length === 1 ? 'produto selecionado' : 'produtos selecionados'}. Marque apenas os atributos que deseja alterar para preparar o anúncio.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-center">
+                <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground border border-border flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                  {activeBulkCount} {activeBulkCount === 1 ? 'campo selecionado' : 'campos selecionados'}
+                </span>
+              </div>
+            </div>
+
+            {/* Navegação por Abas (Estilo ERP) */}
+            <div className="flex border-b border-border bg-muted/40 px-6 overflow-x-auto gap-1">
+              <button
+                type="button"
+                onClick={() => setBulkTab('comercial')}
+                className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
+                  bulkTab === 'comercial'
+                    ? 'border-primary text-primary bg-background/50'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <DollarSign className="w-4 h-4" />
+                Comercial & Estoque
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkTab('anuncio')}
+                className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
+                  bulkTab === 'anuncio'
+                    ? 'border-primary text-primary bg-background/50'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                Anúncio Mercado Livre
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkTab('fiscal')}
+                className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
+                  bulkTab === 'fiscal'
+                    ? 'border-primary text-primary bg-background/50'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Identificação & Fiscal
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkTab('specs')}
+                className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
+                  bulkTab === 'specs'
+                    ? 'border-primary text-primary bg-background/50'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Especificações & Garantia
+              </button>
+            </div>
+
+            {/* Conteúdo do Formulário */}
+            <form onSubmit={handleBulkUpdate} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+                {/* ABA 1: COMERCIAL & ESTOQUE */}
+                {bulkTab === 'comercial' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    {/* Preço de Venda */}
+                    <div className={`p-4 border rounded-xl transition-all ${updatePriceChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updatePriceChecked}
+                            onChange={(e) => setUpdatePriceChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Preço de Venda (R$)</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updatePriceChecked ? 'Será aplicado a todos' : 'Mantém preço original'}</span>
+                      </label>
+                      {updatePriceChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            required
+                            value={bulkPrice}
+                            onChange={(e) => setBulkPrice(e.target.value)}
+                            placeholder="Ex: 149.90"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quantidade em Estoque */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateQuantityChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateQuantityChecked}
+                            onChange={(e) => setUpdateQuantityChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Quantidade em Estoque</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateQuantityChecked ? 'Será aplicado a todos' : 'Mantém estoque original'}</span>
+                      </label>
+                      {updateQuantityChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={bulkQuantity}
+                            onChange={(e) => setBulkQuantity(e.target.value)}
+                            placeholder="Ex: 25"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ABA 2: ANÚNCIO MERCADO LIVRE */}
+                {bulkTab === 'anuncio' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    {/* Categoria ML */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateMlCategoryIdChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateMlCategoryIdChecked}
+                            onChange={(e) => setUpdateMlCategoryIdChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Categoria Mercado Livre (ID MLB)</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateMlCategoryIdChecked ? 'Vinculação automática' : 'Mantém categoria atual'}</span>
+                      </label>
+                      {updateMlCategoryIdChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <input
+                            type="text"
+                            required
+                            value={bulkMlCategoryId}
+                            onChange={(e) => setBulkMlCategoryId(e.target.value)}
+                            placeholder="Ex: MLB1271 (Perfumes) ou MLB1234"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1.5">
+                            Essa categoria será usada em todos os produtos selecionados durante a publicação no Mercado Livre.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tipo de Anúncio ML */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateListingTypeIdChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateListingTypeIdChecked}
+                            onChange={(e) => setUpdateListingTypeIdChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Tipo de Anúncio ML</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateListingTypeIdChecked ? 'Clássico ou Premium' : 'Mantém tipo padrão'}</span>
+                      </label>
+                      {updateListingTypeIdChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <select
+                            value={bulkListingTypeId}
+                            onChange={(e) => setBulkListingTypeId(e.target.value)}
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="gold_special">Clássico (gold_special — Exposição alta)</option>
+                            <option value="gold_pro">Premium (gold_pro — Exposição máxima / Parcelamento sem juros)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Condição */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateConditionChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateConditionChecked}
+                            onChange={(e) => setUpdateConditionChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Condição do Produto</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateConditionChecked ? 'Novo ou Usado' : 'Mantém condição original'}</span>
+                      </label>
+                      {updateConditionChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <select
+                            value={bulkCondition}
+                            onChange={(e) => setBulkCondition(e.target.value)}
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="new">Novo (New)</option>
+                            <option value="used">Usado (Used)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ABA 3: FISCAL & IDENTIFICAÇÃO */}
+                {bulkTab === 'fiscal' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    {/* Marca */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateBrandChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateBrandChecked}
+                            onChange={(e) => setUpdateBrandChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Marca do Produto (Brand)</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateBrandChecked ? 'Será aplicado a todos' : 'Mantém marca original'}</span>
+                      </label>
+                      {updateBrandChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <input
+                            type="text"
+                            required
+                            value={bulkBrand}
+                            onChange={(e) => setBulkBrand(e.target.value)}
+                            placeholder="Ex: Lattafa, Dior, Chanel, Carolina Herrera"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* GTIN / EAN */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateGtinChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateGtinChecked}
+                            onChange={(e) => setUpdateGtinChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Código de Barras (GTIN / EAN)</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateGtinChecked ? 'Código universal' : 'Mantém GTIN original'}</span>
+                      </label>
+                      {updateGtinChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <input
+                            type="text"
+                            required
+                            value={bulkGtin}
+                            onChange={(e) => setBulkGtin(e.target.value)}
+                            placeholder="Ex: 6291108732049 ou SEM GTIN"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* NCM */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateNcmChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateNcmChecked}
+                            onChange={(e) => setUpdateNcmChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Classificação Fiscal (NCM)</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateNcmChecked ? 'NCM fiscal' : 'Mantém NCM original'}</span>
+                      </label>
+                      {updateNcmChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <input
+                            type="text"
+                            required
+                            value={bulkNcm}
+                            onChange={(e) => setBulkNcm(e.target.value)}
+                            placeholder="Ex: 3303.00.10 (Perfumes e águas-de-colônia)"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ABA 4: ESPECIFICAÇÕES & GARANTIA */}
+                {bulkTab === 'specs' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Tipo de Perfume */}
+                      <div className={`p-4 border rounded-xl transition-all ${updatePerfumeTypeChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer mb-2">
+                          <input
+                            type="checkbox"
+                            checked={updatePerfumeTypeChecked}
+                            onChange={(e) => setUpdatePerfumeTypeChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Tipo de Perfume</span>
+                        </label>
+                        {updatePerfumeTypeChecked && (
+                          <select
+                            value={bulkPerfumeType}
+                            onChange={(e) => setBulkPerfumeType(e.target.value)}
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="Eau de Parfum">Eau de Parfum (EDP)</option>
+                            <option value="Eau de Toilette">Eau de Toilette (EDT)</option>
+                            <option value="Parfum">Parfum / Extrait de Parfum</option>
+                            <option value="Eau de Cologne">Eau de Cologne (EDC)</option>
+                            <option value="Body Splash">Body Splash / Body Mist</option>
+                          </select>
+                        )}
+                      </div>
+
+                      {/* Gênero */}
+                      <div className={`p-4 border rounded-xl transition-all ${updateGenderChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer mb-2">
+                          <input
+                            type="checkbox"
+                            checked={updateGenderChecked}
+                            onChange={(e) => setUpdateGenderChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Gênero</span>
+                        </label>
+                        {updateGenderChecked && (
+                          <select
+                            value={bulkGender}
+                            onChange={(e) => setBulkGender(e.target.value)}
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="Unissex">Unissex</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Volume (ml) */}
+                    <div className={`p-4 border rounded-xl transition-all ${updateSizeMlChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={updateSizeMlChecked}
+                            onChange={(e) => setUpdateSizeMlChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Volume da Embalagem (ml)</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{updateSizeMlChecked ? 'Ex: 100ml' : 'Mantém volume original'}</span>
+                      </label>
+                      {updateSizeMlChecked && (
+                        <div className="mt-3 pt-3 border-t border-border/60">
+                          <input
+                            type="number"
+                            min="1"
+                            required
+                            value={bulkSizeMl}
+                            onChange={(e) => setBulkSizeMl(e.target.value)}
+                            placeholder="Ex: 100"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Tipo de Garantia */}
+                      <div className={`p-4 border rounded-xl transition-all ${updateWarrantyTypeChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer mb-2">
+                          <input
+                            type="checkbox"
+                            checked={updateWarrantyTypeChecked}
+                            onChange={(e) => setUpdateWarrantyTypeChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Tipo de Garantia</span>
+                        </label>
+                        {updateWarrantyTypeChecked && (
+                          <select
+                            value={bulkWarrantyType}
+                            onChange={(e) => setBulkWarrantyType(e.target.value)}
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="Garantia do vendedor">Garantia do vendedor</option>
+                            <option value="Garantia de fábrica">Garantia de fábrica</option>
+                            <option value="Sem garantia">Sem garantia</option>
+                          </select>
+                        )}
+                      </div>
+
+                      {/* Tempo de Garantia */}
+                      <div className={`p-4 border rounded-xl transition-all ${updateWarrantyTimeChecked ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/10'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer mb-2">
+                          <input
+                            type="checkbox"
+                            checked={updateWarrantyTimeChecked}
+                            onChange={(e) => setUpdateWarrantyTimeChecked(e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-foreground">Tempo de Garantia</span>
+                        </label>
+                        {updateWarrantyTimeChecked && (
+                          <input
+                            type="text"
+                            required
+                            value={bulkWarrantyTime}
+                            onChange={(e) => setBulkWarrantyTime(e.target.value)}
+                            placeholder="Ex: 30 dias / 90 dias"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
-              {/* Estoque */}
-              <div className="space-y-3 p-3 border border-border rounded-xl bg-muted/10">
-                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-foreground">
-                  <input 
-                    type="checkbox" 
-                    checked={updateQuantityChecked} 
-                    onChange={(e) => setUpdateQuantityChecked(e.target.checked)} 
-                    className="rounded border-border text-primary focus:ring-primary cursor-pointer h-4 w-4"
-                  />
-                  <span>Alterar Quantidade em Estoque</span>
-                </label>
-                {updateQuantityChecked && (
-                  <input 
-                    type="number" 
-                    min="0"
-                    required
-                    value={bulkQuantity}
-                    onChange={(e) => setBulkQuantity(e.target.value)}
-                    placeholder="Ex: 15"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground"
-                  />
-                )}
-              </div>
-
-              {/* Categoria ML */}
-              <div className="space-y-3 p-3 border border-border rounded-xl bg-muted/10">
-                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-foreground">
-                  <input 
-                    type="checkbox" 
-                    checked={updateMlCategoryIdChecked} 
-                    onChange={(e) => setUpdateMlCategoryIdChecked(e.target.checked)} 
-                    className="rounded border-border text-primary focus:ring-primary cursor-pointer h-4 w-4"
-                  />
-                  <span>Vincular Categoria Mercado Livre</span>
-                </label>
-                {updateMlCategoryIdChecked && (
-                  <input 
-                    type="text" 
-                    required
-                    value={bulkMlCategoryId}
-                    onChange={(e) => setBulkMlCategoryId(e.target.value)}
-                    placeholder="Ex: MLB1271 (Para Perfumes)"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground font-mono uppercase"
-                  />
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setIsBulkEditOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isBulkEditing || (!updatePriceChecked && !updateQuantityChecked && !updateMlCategoryIdChecked)}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isBulkEditing ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent"></span> : null}
-                  {isBulkEditing ? 'Salvando...' : 'Aplicar Alterações'}
-                </button>
+              {/* Footer Ações */}
+              <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  Dica: Atributos inalterados preservam os dados individuais de cada produto.
+                </span>
+                <div className="flex items-center gap-3 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkEditOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isBulkEditing || activeBulkCount === 0}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isBulkEditing ? (
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent"></span>
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    {isBulkEditing
+                      ? 'Salvando em Massa...'
+                      : `Aplicar Alterações (${activeBulkCount} ${activeBulkCount === 1 ? 'campo' : 'campos'})`}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -5,6 +5,21 @@ import { SupabaseProductRepository } from '../../domain/repositories/SupabasePro
 import { supabase } from '../../infrastructure/database/supabase';
 import { OptimizeListingUseCase } from '../../application/useCases/OptimizeListingUseCase';
 
+function normalizeMlCategoryId(val?: unknown): string | undefined {
+  if (val === null || val === undefined) return undefined;
+  if (typeof val !== 'string') return String(val).trim() || undefined;
+  const trimmed = val.trim();
+  if (!trimmed) return undefined;
+  const match = trimmed.toUpperCase().match(/(ML[A-Z])-?(\d+)/);
+  if (match) {
+    return `${match[1]}${match[2]}`;
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return `MLB${trimmed}`;
+  }
+  return trimmed.toUpperCase();
+}
+
 export class ProductController {
   constructor(
     private importProductsUseCase: ImportProductsUseCase,
@@ -71,6 +86,9 @@ export class ProductController {
   async update(request: FastifyRequest<{ Params: { id: string }, Body: any }>, reply: FastifyReply) {
     try {
       const userId = await this.getUserId(request);
+      if (request.body && typeof request.body === 'object' && 'mlCategoryId' in request.body) {
+        request.body.mlCategoryId = normalizeMlCategoryId(request.body.mlCategoryId);
+      }
       const product = await this.productRepository.update(request.params.id, userId, request.body as any);
       
       if (!product) {
@@ -87,6 +105,9 @@ export class ProductController {
   async create(request: FastifyRequest<{ Body: any }>, reply: FastifyReply) {
     try {
       const userId = await this.getUserId(request);
+      if (request.body && typeof request.body === 'object' && 'mlCategoryId' in request.body) {
+        request.body.mlCategoryId = normalizeMlCategoryId(request.body.mlCategoryId);
+      }
       
       // Type assertion as the repository handles mapping to database fields
       // In a real scenario we should validate `request.body` using a schema parser (like Zod)
@@ -149,16 +170,70 @@ export class ProductController {
     }
   }
 
-  async updateBulk(request: FastifyRequest<{ Body: { ids: string[]; price?: number; quantity?: number; clearImage?: boolean; mlCategoryId?: string } }>, reply: FastifyReply) {
+  async updateBulk(
+    request: FastifyRequest<{
+      Body: {
+        ids: string[];
+        price?: number;
+        quantity?: number;
+        clearImage?: boolean;
+        mlCategoryId?: string;
+        brand?: string;
+        ncm?: string;
+        gtin?: string;
+        condition?: string;
+        listingTypeId?: string;
+        warrantyType?: string;
+        warrantyTime?: string;
+        perfumeType?: string;
+        gender?: string;
+        sizeMl?: string;
+      };
+    }>,
+    reply: FastifyReply
+  ) {
     try {
       const userId = await this.getUserId(request);
-      const { ids, price, quantity, clearImage, mlCategoryId } = request.body;
+      const {
+        ids,
+        price,
+        quantity,
+        clearImage,
+        mlCategoryId,
+        brand,
+        ncm,
+        gtin,
+        condition,
+        listingTypeId,
+        warrantyType,
+        warrantyTime,
+        perfumeType,
+        gender,
+        sizeMl
+      } = request.body;
       
       if (!Array.isArray(ids) || ids.length === 0) {
         return reply.status(400).send({ error: 'Nenhum ID fornecido' });
       }
 
-      await this.productRepository.updateManyProducts(ids, userId, { price, quantity, clearImage, mlCategoryId });
+      const cleanedMlCategoryId = mlCategoryId !== undefined ? normalizeMlCategoryId(mlCategoryId) : undefined;
+
+      await this.productRepository.updateManyProducts(ids, userId, {
+        price,
+        quantity,
+        clearImage,
+        mlCategoryId: cleanedMlCategoryId,
+        brand,
+        ncm,
+        gtin,
+        condition,
+        listingTypeId,
+        warrantyType,
+        warrantyTime,
+        perfumeType,
+        gender,
+        sizeMl
+      });
       return reply.send({ success: true, message: `${ids.length} produtos atualizados com sucesso` });
     } catch (error) {
       request.log.error(error);
