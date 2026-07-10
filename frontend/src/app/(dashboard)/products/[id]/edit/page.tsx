@@ -39,6 +39,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     gtin: '',
     warrantyType: 'Garantia do vendedor',
     warrantyTime: '30 dias',
+    shippingMode: 'me2',
     mlCategoryId: '',
     mlCategoryName: '',
     mlAttributes: {} as Record<string, unknown>
@@ -82,6 +83,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           gtin: data.gtin || '',
           warrantyType: data.warranty_type || 'Garantia do vendedor',
           warrantyTime: data.warranty_time || '30 dias',
+          shippingMode: data.shipping_mode || 'me2',
           mlCategoryId: data.ml_category_id || '',
           mlCategoryName: '', // Loaded by the component if mlCategoryId is present
           mlAttributes: data.ml_attributes || {}
@@ -580,6 +582,29 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 placeholder="Ex: 7891010101010"
                 className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Modo de Envio (Frete)</label>
+              <select 
+                name="shippingMode"
+                value={formData.shippingMode}
+                onChange={handleChange}
+                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all text-foreground"
+              >
+                <option value="me2">Mercado Envios (Padrão Recomendado)</option>
+                <option value="me1">Mercado Envios 1</option>
+                <option value="not_specified">Padrão da Conta / Categoria</option>
+                <option value="custom">A Combinar / Sem Mercado Envios</option>
+              </select>
+              {Number(String(formData.price || '').replace(',', '.')) >= 79 ? (
+                <p className="text-[11px] text-emerald-500 font-medium flex items-center gap-1 mt-1">
+                  ✓ Frete Grátis Obrigatório ML aplicado automaticamente (Preço ≥ R$ 79)
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Frete grátis obrigatório para valores ≥ R$ 79,00
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Tipo de Garantia</label>

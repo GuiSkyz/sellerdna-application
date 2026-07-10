@@ -23,5 +23,6 @@ export interface Product {
   warrantyTime?: string;
   mlCategoryId?: string;
   mlAttributes?: Record<string, any>;
+  shippingMode?: string;
   createdAt: Date;
 }

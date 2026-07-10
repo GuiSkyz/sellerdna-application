@@ -122,9 +122,9 @@ export class CreateListingUseCase {
       pictures: mlPictures,
       attributes: attributes.length > 0 ? attributes : undefined,
       shipping: {
-        mode: 'me2',
+        mode: product.shippingMode || 'me2',
         local_pick_up: false,
-        free_shipping: false
+        free_shipping: Number(price) >= 79
       }
     };
 
@@ -138,40 +138,64 @@ export class CreateListingUseCase {
 
     // 7. Pré-validação oficial na API do Mercado Livre (/items/validate) antes de publicar
     let payloadToCreate = { ...mlItemPayload };
-    const initialValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+    let initialValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
 
     if (!initialValidation.valid) {
       const errorStr = String(initialValidation.error || '');
       const rawErrStr = JSON.stringify(initialValidation.rawError || {});
 
-      // Verificar se o erro é sobre title/family_name (caso a detecção proativa tenha falhado)
-      const isUserProductsModelError =
-        errorStr.includes('family_name') ||
-        rawErrStr.includes('family_name') ||
-        errorStr.includes('fields [title] are invalid') ||
-        errorStr.includes('The fields [title] are invalid') ||
-        rawErrStr.includes('fields [title] are invalid') ||
-        rawErrStr.includes('The fields [title] are invalid') ||
-        (rawErrStr.includes('body.invalid_fields') && rawErrStr.includes('title'));
+      // Verificar se o erro é sobre envio / frete (ex: "User has not mode me1", "Mandatory free shipping added")
+      const isShippingError =
+        errorStr.includes('mode me1') ||
+        errorStr.includes('mode me2') ||
+        errorStr.includes('free shipping') ||
+        errorStr.includes('shipping') ||
+        rawErrStr.includes('mode me1') ||
+        rawErrStr.includes('free shipping');
 
-      if (isUserProductsModelError && payloadToCreate.title) {
-        // Fallback reativo: remover title e usar family_name
-        console.log(`[CreateListing] Erro de modelo User Products detectado reativamente. Trocando title → family_name.`);
-        const { title: _removedTitle, ...restPayload } = payloadToCreate;
+      if (isShippingError) {
+        console.log(`[CreateListing] Erro/Aviso de frete (shipping) detectado. Ajustando modo de frete e revalidando.`);
         payloadToCreate = {
-          ...restPayload,
-          family_name: title.substring(0, 60),
+          ...payloadToCreate,
+          shipping: {
+            mode: 'not_specified',
+            local_pick_up: false,
+            free_shipping: Number(price) >= 79
+          }
         };
+        initialValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+      }
 
-        // Revalidar com payload ajustado
-        const retryValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
-        if (!retryValidation.valid) {
-          // Apresentar erro detalhado ao usuário
-          throw new Error(this.buildActionableErrorMessage(retryValidation.error || initialValidation.error || '', categoryInfo));
+      if (!initialValidation.valid) {
+        const errorStr2 = String(initialValidation.error || '');
+        const rawErrStr2 = JSON.stringify(initialValidation.rawError || {});
+
+        // Verificar se o erro é sobre title/family_name (caso a detecção proativa tenha falhado)
+        const isUserProductsModelError =
+          errorStr2.includes('family_name') ||
+          rawErrStr2.includes('family_name') ||
+          errorStr2.includes('fields [title] are invalid') ||
+          errorStr2.includes('The fields [title] are invalid') ||
+          rawErrStr2.includes('fields [title] are invalid') ||
+          rawErrStr2.includes('The fields [title] are invalid') ||
+          (rawErrStr2.includes('body.invalid_fields') && rawErrStr2.includes('title'));
+
+        if (isUserProductsModelError && payloadToCreate.title) {
+          // Fallback reativo: remover title e usar family_name
+          console.log(`[CreateListing] Erro de modelo User Products detectado reativamente. Trocando title → family_name.`);
+          const { title: _removedTitle, ...restPayload } = payloadToCreate;
+          payloadToCreate = {
+            ...restPayload,
+            family_name: title.substring(0, 60),
+          };
+
+          const retryValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+          if (!retryValidation.valid) {
+            throw new Error(this.buildActionableErrorMessage(retryValidation.error || initialValidation.error || '', categoryInfo));
+          }
+        } else {
+          throw new Error(this.buildActionableErrorMessage(initialValidation.error || '', categoryInfo));
         }
-      } else {
-        // Erro NÃO é sobre title/family_name — apresentar erro detalhado com orientação
-        throw new Error(this.buildActionableErrorMessage(initialValidation.error || '', categoryInfo));
       }
     }
 
@@ -376,7 +400,12 @@ export class CreateListingUseCase {
       parts.push('O Mercado Livre encontrou divergência na validação do anúncio.');
     }
 
-    if (categoryInfo && categoryInfo.requiredAttributes && categoryInfo.requiredAttributes.length > 0) {
+    const isOnlyShippingError =
+      rawError.includes('mode me1') ||
+      rawError.includes('free shipping') ||
+      rawError.includes('shipping');
+
+    if (!isOnlyShippingError && categoryInfo && categoryInfo.requiredAttributes && categoryInfo.requiredAttributes.length > 0) {
       const missingHints: string[] = [];
 
       for (const attr of categoryInfo.requiredAttributes) {
