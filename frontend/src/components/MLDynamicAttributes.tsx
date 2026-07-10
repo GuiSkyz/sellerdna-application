@@ -184,6 +184,13 @@ export function MLDynamicAttributes({
                           ))}
                         </select>
                       )}
+                      <input
+                        type="text"
+                        value={currentValue}
+                        onChange={(e) => onAttributeChange(attr.id, e.target.value)}
+                        placeholder={`Ou digite sua opção personalizada...`}
+                        className="w-full px-3 py-1.5 bg-background border border-border rounded-md text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
                     </div>
                   ) : attr.value_type === 'boolean' ? (
                     <div className="flex gap-2">
@@ -205,6 +212,49 @@ export function MLDynamicAttributes({
                         );
                       })}
                     </div>
+                  ) : (attr.value_type === 'number_unit' || attr.id === 'UNIT_VOLUME' || attr.name.toLowerCase().includes('volume')) ? (
+                    (() => {
+                      const units = attr.name.toLowerCase().includes('peso') ? ['g', 'kg', 'mg'] :
+                                    attr.name.toLowerCase().includes('comprimento') || attr.name.toLowerCase().includes('altura') ? ['cm', 'mm', 'm'] :
+                                    ['mL', 'L', 'fl oz'];
+                      const match = currentValue.match(/^([\d,.]+)\s*([a-zA-Z]+)?$/);
+                      const numVal = match ? match[1] : currentValue.replace(/[a-zA-Z\s]/g, '');
+                      const unitVal = match && match[2] ? match[2] : 'mL';
+
+                      return (
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={numVal}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              onAttributeChange(attr.id, v ? `${v} ${unitVal}` : '');
+                            }}
+                            placeholder="Ex: 100"
+                            className="w-1/2 px-3 py-1.5 bg-background border border-border rounded-md text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                          <div className="flex gap-1 flex-1">
+                            {units.map(u => {
+                              const isSel = unitVal.toLowerCase() === u.toLowerCase();
+                              return (
+                                <button
+                                  key={u}
+                                  type="button"
+                                  onClick={() => onAttributeChange(attr.id, numVal ? `${numVal} ${u}` : `0 ${u}`)}
+                                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition-all flex-1 ${
+                                    isSel
+                                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                      : 'bg-card text-muted-foreground border-border hover:bg-muted'
+                                  }`}
+                                >
+                                  {u}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <input
                       type="text"

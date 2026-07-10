@@ -160,14 +160,46 @@ export default function CreateProductPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Tamanho (ML)</label>
-                <input 
-                  name="sizeMl"
-                  value={formData.sizeMl}
-                  onChange={handleChange}
-                  placeholder="Ex: 100ml"
-                  className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all text-foreground"
-                />
+                <label className="text-sm font-medium text-foreground">Volume da Unidade</label>
+                {(() => {
+                  const match = String(formData.sizeMl || '').match(/^([\d,.]+)\s*([a-zA-Z]+)?$/);
+                  const numVal = match ? match[1] : String(formData.sizeMl || '').replace(/[a-zA-Z\s]/g, '');
+                  const unitVal = match && match[2] ? match[2] : 'mL';
+
+                  return (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={numVal}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormData(prev => ({ ...prev, sizeMl: v ? `${v} ${unitVal}` : '' }));
+                        }}
+                        placeholder="Ex: 100"
+                        className="w-3/5 px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+                      />
+                      <div className="flex gap-1 flex-1">
+                        {['mL', 'L'].map(u => {
+                          const isSel = unitVal.toLowerCase() === u.toLowerCase();
+                          return (
+                            <button
+                              key={u}
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, sizeMl: numVal ? `${numVal} ${u}` : `100 ${u}` }))}
+                              className={`px-2.5 py-2 rounded-md text-xs font-medium border transition-all flex-1 ${
+                                isSel
+                                  ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                  : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                              }`}
+                            >
+                              {u}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="space-y-2 col-span-1 md:col-span-2">
                 <label className="text-sm font-medium text-foreground">Gênero</label>

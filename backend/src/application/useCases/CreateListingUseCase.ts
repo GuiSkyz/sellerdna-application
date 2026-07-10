@@ -30,10 +30,12 @@ const PRODUCT_TO_ML_ATTRIBUTE_MAP: Record<string, (product: any) => string | und
   'WARRANTY_TIME': (p) => p.warrantyTime,
   'GENDER': (p) => p.gender,
   'PERFUME_TYPE': (p) => p.perfumeType,
-  'VOLUME': (p) => p.sizeMl ? `${p.sizeMl} ml` : undefined,
+  'UNIT_VOLUME': (p) => p.sizeMl ? (String(p.sizeMl).toLowerCase().includes('ml') ? String(p.sizeMl) : `${p.sizeMl} mL`) : undefined,
+  'VOLUME': (p) => p.sizeMl ? (String(p.sizeMl).toLowerCase().includes('ml') ? String(p.sizeMl) : `${p.sizeMl} mL`) : undefined,
+  'PERFUME_NAME': (p) => p.name,
+  'FRAGRANCE_NAME': (p) => p.name,
   'LINE': (p) => p.line,
   'MODEL': (p) => p.model,
-  'FRAGRANCE_NAME': (p) => p.name,
 };
 
 export class CreateListingUseCase {
@@ -292,7 +294,15 @@ export class CreateListingUseCase {
       attrLookup.set(catAttr.id, catAttr);
     }
 
-    for (const [id, rawValue] of attributeMap.entries()) {
+    for (const [rawId, rawValue] of attributeMap.entries()) {
+      let id = rawId;
+      // Tratar aliases para categorias que exigem IDs específicos no catálogo do ML
+      if (id === 'FRAGRANCE_NAME' && attrLookup.has('PERFUME_NAME')) {
+        id = 'PERFUME_NAME';
+      } else if (id === 'VOLUME' && attrLookup.has('UNIT_VOLUME')) {
+        id = 'UNIT_VOLUME';
+      }
+
       let finalVal = rawValue;
       const catAttr = attrLookup.get(id);
 
@@ -326,7 +336,22 @@ export class CreateListingUseCase {
       normalizedAttributes.push({ id, value_name: finalVal });
     }
 
-    // 3. Preencher atributos obrigatórios da categoria com valores padrão se não foram preenchidos
+    // 3. Preenchimento automático inteligente para EMPTY_GTIN_REASON e atributos obrigatórios
+    const hasGtin = normalizedAttributes.some(a => a.id === 'GTIN' && a.value_name && String(a.value_name).trim() !== '');
+    if (!hasGtin && attrLookup.has('EMPTY_GTIN_REASON') && !normalizedAttributes.some(a => a.id === 'EMPTY_GTIN_REASON')) {
+      const gtinReasonAttr = attrLookup.get('EMPTY_GTIN_REASON');
+      if (gtinReasonAttr?.values && gtinReasonAttr.values.length > 0) {
+        normalizedAttributes.push({
+          id: 'EMPTY_GTIN_REASON',
+          value_id: gtinReasonAttr.values[0].id,
+          value_name: gtinReasonAttr.values[0].name
+        });
+      } else {
+        normalizedAttributes.push({ id: 'EMPTY_GTIN_REASON', value_name: 'O produto não tem código cadastrado' });
+      }
+    }
+
+    // Preencher outros atributos obrigatórios faltantes com default_value se existirem
     for (const reqAttr of (allCategoryAttributes || [])) {
       const isReq = reqAttr.required || reqAttr.tags?.required || reqAttr.tags?.catalog_required;
       const exists = normalizedAttributes.some(a => a.id === reqAttr.id);
