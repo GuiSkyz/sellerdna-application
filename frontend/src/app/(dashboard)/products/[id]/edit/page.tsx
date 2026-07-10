@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Loader2, Package, Tag, Box, Palette } from 'lucide-rea
 import Link from 'next/link';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import { MLDynamicAttributes } from '@/components/MLDynamicAttributes';
+import { ActionSummaryDialog, ActionSummaryItem } from '@/components/features/ActionSummaryDialog';
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const [unwrappedParams, setUnwrappedParams] = useState<{ id: string } | null>(null);
@@ -140,6 +141,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   };
 
   const [fetchingDrive, setFetchingDrive] = useState(false);
+  const [summaryDialog, setSummaryDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle?: string;
+    actionType?: 'search' | 'publish' | 'delete' | 'update' | 'general';
+    items: ActionSummaryItem[];
+  }>({
+    isOpen: false,
+    title: '',
+    items: [],
+  });
+
   const handleFetchDriveImages = async () => {
     if (!unwrappedParams?.id) return;
     setFetchingDrive(true);
@@ -155,9 +168,31 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       if (!res.ok) throw new Error(data.error || 'Falha ao buscar imagens no Google Drive');
       
       setFormData(prev => ({ ...prev, imageUrls: data.imageUrls }));
-      alert(`Foram encontradas e vinculadas ${data.imageUrls.length} fotos! Salve as alterações para confirmar.`);
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Resultado: Busca de Fotos (Google Drive)',
+        subtitle: 'Verificação da pasta do produto no Google Drive.',
+        actionType: 'search',
+        items: [{
+          id: unwrappedParams.id,
+          name: formData.name || 'Produto Atual',
+          status: 'success',
+          message: `${data.imageUrls?.length || 0} foto(s) encontrada(s) e vinculada(s) com sucesso à sua lista de imagens. Salve o produto para confirmar.`
+        }]
+      });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao buscar imagens');
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Pasta não encontrada no Google Drive',
+        subtitle: 'Verificação da pasta do produto no Google Drive.',
+        actionType: 'search',
+        items: [{
+          id: unwrappedParams.id,
+          name: formData.name || 'Produto Atual',
+          status: 'error',
+          message: err instanceof Error ? err.message : `Não encontrado pasta do produto "${formData.name}" no Google Drive.`
+        }]
+      });
     } finally {
       setFetchingDrive(false);
     }
@@ -553,6 +588,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </button>
         </div>
       </form>
+
+      <ActionSummaryDialog
+        isOpen={summaryDialog.isOpen}
+        onClose={() => setSummaryDialog(prev => ({ ...prev, isOpen: false }))}
+        title={summaryDialog.title}
+        subtitle={summaryDialog.subtitle}
+        actionType={summaryDialog.actionType}
+        items={summaryDialog.items}
+      />
     </div>
   );
 }

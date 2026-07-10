@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
+import { ActionSummaryDialog, ActionSummaryItem } from '@/components/features/ActionSummaryDialog';
 
 interface Product {
   id: string;
@@ -76,6 +77,21 @@ export default function ProductsPage() {
   const [isBulkPublishing, setIsBulkPublishing] = useState(false);
   const [bulkPublishProgress, setBulkPublishProgress] = useState('');
   const [bulkPublishResults, setBulkPublishResults] = useState<BulkPublishResult[] | null>(null);
+
+  const [isFetchingDrive, setIsFetchingDrive] = useState(false);
+  const [isClearingPhotos, setIsClearingPhotos] = useState(false);
+  const [summaryDialog, setSummaryDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle?: string;
+    actionType?: 'search' | 'publish' | 'delete' | 'update' | 'general';
+    items: ActionSummaryItem[];
+    onConfirmReload?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    items: [],
+  });
 
   useEffect(() => {
     async function fetchProducts() {
@@ -200,7 +216,18 @@ export default function ProductsPage() {
       setSelectedIds(selectedIds.filter(itemId => itemId !== id));
     } catch (err) {
       console.error(err);
-      alert('Falha ao excluir o produto.');
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Erro na Exclusão',
+        subtitle: 'Não foi possível excluir o produto.',
+        actionType: 'delete',
+        items: [{
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Falha ao excluir o produto.'
+        }]
+      });
     }
   };
 
@@ -216,11 +243,35 @@ export default function ProductsPage() {
       });
       if (!res.ok) throw new Error('Erro ao excluir em massa');
       
+      const removedIds = [...selectedIds];
       setProducts(products.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Resultado: Exclusão em Massa',
+        subtitle: 'Exclusão de produtos finalizada com sucesso.',
+        actionType: 'delete',
+        items: removedIds.map(id => ({
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'success',
+          message: 'Produto excluído com sucesso.'
+        }))
+      });
     } catch (err) {
       console.error(err);
-      alert('Falha ao excluir os produtos selecionados.');
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Erro na Exclusão em Massa',
+        subtitle: 'Falha ao excluir os produtos selecionados.',
+        actionType: 'delete',
+        items: selectedIds.map(id => ({
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Falha ao excluir os produtos selecionados.'
+        }))
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -287,14 +338,35 @@ export default function ProductsPage() {
         throw new Error(errData?.error || 'Erro ao atualizar em massa');
       }
       
-      alert(`${selectedIds.length} produto(s) atualizado(s) com sucesso!`);
       setIsBulkEditOpen(false);
-      setSelectedIds([]);
-      window.location.reload();
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Resultado: Atualização em Massa',
+        subtitle: 'Atributos atualizados com sucesso para os produtos selecionados.',
+        actionType: 'update',
+        items: selectedIds.map(id => ({
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'success',
+          message: 'Atributos atualizados com sucesso.'
+        })),
+        onConfirmReload: () => window.location.reload(),
+      });
     } catch (err: unknown) {
       console.error(err);
       const msg = err instanceof Error ? err.message : 'Falha ao atualizar os produtos selecionados.';
-      alert(`Falha ao atualizar em massa: ${msg}`);
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Erro na Atualização em Massa',
+        subtitle: 'Falha ao atualizar atributos.',
+        actionType: 'update',
+        items: selectedIds.map(id => ({
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'error',
+          message: msg,
+        })),
+      });
     } finally {
       setIsBulkEditing(false);
     }
@@ -302,20 +374,26 @@ export default function ProductsPage() {
 
   const handleBulkPublish = async () => {
     if (selectedIds.length > 10) {
-      alert('Atenção: A limitação atual de lote de publicação com IA é de no máximo 10 produtos por vez para evitar instabilidades.');
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Atenção: Limite por Lote',
+        subtitle: 'Para evitar instabilidade na IA e nas APIs do Mercado Livre.',
+        actionType: 'publish',
+        items: [{
+          id: 'AVISO',
+          name: 'Limite de 10 produtos',
+          status: 'warning',
+          message: 'A limitação atual de lote de publicação com IA é de no máximo 10 produtos por vez para evitar instabilidades.'
+        }]
+      });
       return;
     }
 
-    setIsBulkPublishOpen(true);
     setIsBulkPublishing(true);
-    setBulkPublishProgress('Iniciando publicação em lote...');
-    setBulkPublishResults(null);
+    setBulkPublishProgress('IA gerando títulos e descrições e publicando no Mercado Livre...');
     
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-      
-      setBulkPublishProgress('IA gerando títulos e descrições com dados oficiais dos perfumes... (Lote de até 10 anúncios)');
-      
       const res = await authenticatedFetch(`${apiUrl}/api/listings/bulk-publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -325,14 +403,137 @@ export default function ProductsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro na publicação em lote');
       
-      setBulkPublishResults(data.results || []);
-      setBulkPublishProgress('Concluído!');
+      const results: ActionSummaryItem[] = (data.results || []).map((r: any, idx: number) => ({
+        id: r.mlItemId || selectedIds[idx] || idx + 1,
+        name: r.name || `Produto ID ${selectedIds[idx] || idx + 1}`,
+        status: r.success ? 'success' : 'error',
+        message: r.success ? 'Anúncio publicado com sucesso no Mercado Livre!' : (r.error || 'Falha na publicação'),
+        link: r.permalink,
+        linkLabel: 'Ver Anúncio',
+      }));
+
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Resultado: Publicação com IA em Lote',
+        subtitle: 'Resumo das publicações enviadas ao Mercado Livre.',
+        actionType: 'publish',
+        items: results,
+        onConfirmReload: () => window.location.reload(),
+      });
     } catch (err: unknown) {
       console.error(err);
-      alert(err instanceof Error ? err.message : 'Falha na publicação em lote.');
-      setIsBulkPublishOpen(false);
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Erro na Publicação em Lote',
+        subtitle: 'Falha ao processar publicações.',
+        actionType: 'publish',
+        items: selectedIds.map(id => ({
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Falha na publicação em lote.',
+        }))
+      });
     } finally {
       setIsBulkPublishing(false);
+    }
+  };
+
+  const handleBulkFetchDriveImages = async () => {
+    if (!confirm(`Sincronizar fotos para ${selectedIds.length} produtos via Google Drive?`)) return;
+    setIsFetchingDrive(true);
+
+    const results: ActionSummaryItem[] = [];
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+
+    for (const id of selectedIds) {
+      const product = products.find(p => p.id === id);
+      const productName = product?.name || `Produto ID ${id}`;
+
+      try {
+        const res = await authenticatedFetch(`${apiUrl}/api/gdrive/fetch-images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: id })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          results.push({
+            id,
+            name: productName,
+            status: 'error',
+            message: data.error || `Não encontrado pasta do produto "${productName}" no Google Drive.`
+          });
+        } else {
+          results.push({
+            id,
+            name: productName,
+            status: 'success',
+            message: `${data.imageUrls?.length || 0} foto(s) importada(s) com sucesso da pasta no Google Drive.`
+          });
+        }
+      } catch (e: unknown) {
+        results.push({
+          id,
+          name: productName,
+          status: 'error',
+          message: e instanceof Error ? e.message : `Não encontrado pasta do produto "${productName}" no Google Drive.`
+        });
+      }
+    }
+
+    setIsFetchingDrive(false);
+    setSummaryDialog({
+      isOpen: true,
+      title: 'Resultado: Busca de Fotos no Google Drive',
+      subtitle: 'Relatório de verificação de pastas e importação de imagens para cada produto selecionado.',
+      actionType: 'search',
+      items: results,
+      onConfirmReload: () => window.location.reload(),
+    });
+  };
+
+  const handleBulkClearImages = async () => {
+    if (!confirm(`Tem certeza que deseja remover as fotos de ${selectedIds.length} produtos?`)) return;
+    setIsClearingPhotos(true);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/products/bulk-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds, clearImage: true })
+      });
+      if (!res.ok) throw new Error('Erro ao limpar fotos');
+
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Resultado: Limpeza de Fotos',
+        subtitle: 'Remoção de imagens dos produtos selecionados.',
+        actionType: 'delete',
+        items: selectedIds.map(id => ({
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'success',
+          message: 'Fotos removidas com sucesso.'
+        })),
+        onConfirmReload: () => window.location.reload(),
+      });
+    } catch (e: unknown) {
+      setSummaryDialog({
+        isOpen: true,
+        title: 'Erro na Limpeza de Fotos',
+        subtitle: 'Falha ao remover fotos dos produtos.',
+        actionType: 'delete',
+        items: selectedIds.map(id => ({
+          id,
+          name: products.find(p => p.id === id)?.name || `Produto ID ${id}`,
+          status: 'error',
+          message: e instanceof Error ? e.message : 'Erro ao remover fotos'
+        }))
+      });
+    } finally {
+      setIsClearingPhotos(false);
     }
   };
 
@@ -363,68 +564,32 @@ export default function ProductsPage() {
               </button>
               <button 
                 onClick={handleBulkPublish}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
+                disabled={isBulkPublishing}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
               >
                 <Sparkles className="w-4 h-4" />
-                Publicar com IA ({selectedIds.length})
+                {isBulkPublishing ? 'Publicando...' : `Publicar com IA (${selectedIds.length})`}
               </button>
               <button 
-                onClick={async () => {
-                  if (!confirm(`Sincronizar fotos para ${selectedIds.length} produtos via Google Drive?`)) return;
-                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-                  let imported = 0;
-                  
-                  for (const id of selectedIds) {
-                    try {
-                      const res = await authenticatedFetch(`${apiUrl}/api/gdrive/fetch-images`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ productId: id })
-                      });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data.error || 'Falha desconhecida');
-                      imported++;
-                    } catch (e: unknown) {
-                      console.error(`Falha ao importar foto do produto ${id}`, e);
-                      alert(`Erro ao importar fotos do produto ID ${id}: ${e instanceof Error ? e.message : 'Erro'}`);
-                    }
-                  }
-                  if (imported > 0) {
-                    alert(`Importação finalizada! ${imported} fotos importadas com sucesso.`);
-                    window.location.reload();
-                  }
-                }}
-                className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-md text-sm font-medium transition-colors border border-primary/20 flex items-center gap-2"
+                onClick={handleBulkFetchDriveImages}
+                disabled={isFetchingDrive}
+                className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-md text-sm font-medium transition-colors border border-primary/20 flex items-center gap-2 disabled:opacity-50"
               >
                 <UploadCloud className="w-4 h-4" />
-                Buscar Fotos (Drive)
+                {isFetchingDrive ? 'Buscando Fotos...' : 'Buscar Fotos (Drive)'}
               </button>
               <button 
-                onClick={async () => {
-                  if (!confirm(`Tem certeza que deseja remover as fotos de ${selectedIds.length} produtos?`)) return;
-                  try {
-                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
-                    const res = await authenticatedFetch(`${apiUrl}/api/products/bulk-update`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ ids: selectedIds, clearImage: true })
-                    });
-                    if (!res.ok) throw new Error('Erro ao limpar fotos');
-                    alert(`Fotos removidas de ${selectedIds.length} produtos.`);
-                    window.location.reload();
-                  } catch (e: unknown) {
-                    alert(`Erro ao remover fotos: ${e instanceof Error ? e.message : 'Erro'}`);
-                  }
-                }}
-                className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-orange-500/20 flex items-center gap-2"
+                onClick={handleBulkClearImages}
+                disabled={isClearingPhotos}
+                className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-orange-500/20 flex items-center gap-2 disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
-                Limpar Fotos
+                {isClearingPhotos ? 'Limpando Fotos...' : 'Limpar Fotos'}
               </button>
               <button 
                 onClick={handleBulkDelete}
                 disabled={isDeleting}
-                className="bg-destructive/10 hover:bg-destructive/20 text-destructive px-4 py-2 rounded-md text-sm font-medium transition-colors border border-destructive/20 flex items-center gap-2"
+                className="bg-destructive/10 hover:bg-destructive/20 text-destructive px-4 py-2 rounded-md text-sm font-medium transition-colors border border-destructive/20 flex items-center gap-2 disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
                 {isDeleting ? 'Excluindo...' : `Excluir (${selectedIds.length})`}
@@ -1120,81 +1285,15 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Modal Publicação em Massa */}
-      {isBulkPublishOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-            <h3 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-500" />
-              Publicação em Massa ({selectedIds.length} selecionados)
-            </h3>
-            
-            {isBulkPublishing ? (
-              <div className="py-12 flex flex-col items-center justify-center space-y-4">
-                <span className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></span>
-                <p className="text-sm font-medium text-foreground text-center px-6">
-                  {bulkPublishProgress}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  A IA do SellerDNA está gerando títulos SEO e descrições baseadas nas características reais de cada perfume.
-                </p>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <p className="text-sm text-muted-foreground mb-4">
-                  O processo de publicação em lote foi concluído. Veja os resultados abaixo:
-                </p>
-                
-                <div className="flex-1 overflow-y-auto border border-border rounded-xl divide-y divide-border bg-muted/10 mb-6 max-h-[50vh]">
-                  {bulkPublishResults?.map((res, index) => (
-                    <div key={index} className="p-4 flex items-center justify-between gap-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-foreground line-clamp-1">{res.name}</span>
-                        {res.success ? (
-                          <span className="text-xs text-muted-foreground font-mono mt-0.5">ID: {res.mlItemId}</span>
-                        ) : (
-                          <span className="text-xs text-destructive mt-0.5 break-words">{res.error}</span>
-                        )}
-                      </div>
-                      
-                      <div>
-                        {res.success ? (
-                          <a 
-                            href={res.permalink} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="inline-flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border border-emerald-500/20 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
-                          >
-                            Ver Anúncio <ExternalLink className="w-3 h-3" />
-                          </a>
-                        ) : (
-                          <span className="bg-destructive/10 text-destructive border border-destructive/20 px-3 py-1.5 rounded-md text-xs font-semibold">
-                            Falhou
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-end">
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      setIsBulkPublishOpen(false);
-                      setSelectedIds([]);
-                      window.location.reload();
-                    }}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Concluir e Recarregar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <ActionSummaryDialog
+        isOpen={summaryDialog.isOpen}
+        onClose={() => setSummaryDialog(prev => ({ ...prev, isOpen: false }))}
+        title={summaryDialog.title}
+        subtitle={summaryDialog.subtitle}
+        actionType={summaryDialog.actionType}
+        items={summaryDialog.items}
+        onConfirmReload={summaryDialog.onConfirmReload}
+      />
     </div>
   );
 }

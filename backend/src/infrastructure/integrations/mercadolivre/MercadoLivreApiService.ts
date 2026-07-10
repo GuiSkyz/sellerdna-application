@@ -1,3 +1,56 @@
+/** Mapeamento de códigos de erro comuns do ML para mensagens em português com ações sugeridas */
+const ML_ERROR_TRANSLATIONS: Record<string, string> = {
+  'item.attribute.missing_required': 'Atributo obrigatório faltando. Verifique o cadastro do produto.',
+  'item.attribute.missing_conditional_required': 'Atributo condicionalmente obrigatório faltando.',
+  'item.attribute.invalid_value': 'Valor inválido para um atributo.',
+  'item.category_id.invalid': 'Categoria inválida. Selecione outra categoria.',
+  'item.price.invalid': 'Preço inválido. Verifique o valor informado.',
+  'item.available_quantity.invalid': 'Quantidade inválida.',
+  'item.pictures.invalid': 'Imagem inválida. Verifique a URL ou formato da imagem.',
+  'item.pictures.min_quantity': 'O anúncio precisa ter pelo menos 1 imagem.',
+  'item.title.invalid': 'Título inválido para esta categoria.',
+  'body.invalid_fields': 'Campos inválidos no corpo da requisição.',
+};
+
+/** Nomes amigáveis para atributos comuns do ML */
+const ATTRIBUTE_FRIENDLY_NAMES: Record<string, string> = {
+  'BRAND': 'Marca',
+  'MODEL': 'Modelo',
+  'GTIN': 'Código de Barras (GTIN/EAN)',
+  'COLOR': 'Cor',
+  'SIZE': 'Tamanho',
+  'WEIGHT': 'Peso',
+  'HEIGHT': 'Altura',
+  'WIDTH': 'Largura',
+  'LENGTH': 'Comprimento',
+  'MATERIAL': 'Material',
+  'WARRANTY_TYPE': 'Tipo de Garantia',
+  'WARRANTY_TIME': 'Tempo de Garantia',
+  'SELLER_SKU': 'SKU do Vendedor',
+  'PACKAGE_WEIGHT': 'Peso do Pacote',
+  'PACKAGE_HEIGHT': 'Altura do Pacote',
+  'PACKAGE_WIDTH': 'Largura do Pacote',
+  'PACKAGE_LENGTH': 'Comprimento do Pacote',
+  'UNITS_PER_PACK': 'Unidades por Pacote',
+  'ALPHANUMERIC_MODEL': 'Modelo Alfanumérico',
+  'LINE': 'Linha',
+  'FRAGRANCE_NAME': 'Nome da Fragrância',
+  'PERFUME_TYPE': 'Tipo de Perfume',
+  'GENDER': 'Gênero',
+  'VOLUME': 'Volume',
+  'FAMILY_NAME': 'Nome da Família do Produto (Catálogo)',
+};
+
+export interface CategoryAttributeInfo {
+  id: string;
+  name: string;
+  required: boolean;
+  tags: Record<string, any>;
+  values?: { id: string; name: string }[];
+  type: string;
+  default_value?: string;
+}
+
 export class MercadoLivreApiService {
   private baseUrl = 'https://api.mercadolibre.com';
 
@@ -54,6 +107,138 @@ export class MercadoLivreApiService {
     return data;
   }
 
+  /**
+   * Busca os atributos obrigatórios de uma categoria do Mercado Livre.
+   * Retorna informações sobre quais atributos são obrigatórios (required),
+   * se a categoria usa o modelo User Products (family_name), e quais
+   * valores são aceitos para cada atributo.
+   */
+  async getCategoryRequiredInfo(categoryId: string): Promise<{
+    requiredAttributes: CategoryAttributeInfo[];
+    usesUserProductsModel: boolean;
+    allAttributes: CategoryAttributeInfo[];
+  }> {
+    try {
+      const allAttrs = await this.getCategoryAttributes(categoryId);
+
+      const requiredAttributes: CategoryAttributeInfo[] = [];
+      let usesUserProductsModel = false;
+
+      for (const attr of allAttrs) {
+        // Verificar se é atributo obrigatório (required ou conditional_required não-warning)
+        const isRequired =
+          attr.tags?.required === true ||
+          attr.tags?.conditional_required === true ||
+          attr.tags?.catalog_required === true;
+
+        if (isRequired) {
+          requiredAttributes.push({
+            id: attr.id,
+            name: attr.name || attr.id,
+            required: true,
+            tags: attr.tags || {},
+            values: attr.values,
+            type: attr.value_type || 'string',
+            default_value: attr.default_value,
+          });
+        }
+
+        // Detectar modelo User Products — se existir FAMILY_NAME como atributo
+        if (attr.id === 'FAMILY_NAME') {
+          usesUserProductsModel = true;
+        }
+      }
+
+      return { requiredAttributes, usesUserProductsModel, allAttributes: allAttrs };
+    } catch (error) {
+      console.warn(`[ML API] Não foi possível buscar atributos da categoria ${categoryId}:`, error);
+      return { requiredAttributes: [], usesUserProductsModel: false, allAttributes: [] };
+    }
+  }
+
+  /**
+   * Formata erros da API do Mercado Livre em mensagens amigáveis e acionáveis.
+   * Extrai detalhes do array cause[] e traduz códigos de erro para português.
+   */
+  private formatMLErrors(errorData: any): string {
+    if (!errorData) return '';
+
+    const messages: string[] = [];
+
+    // 1. Extrair erros do array cause[]
+    if (errorData.cause && Array.isArray(errorData.cause)) {
+      for (const cause of errorData.cause) {
+        if (cause.type === 'warning') continue;
+
+        const code = cause.code || '';
+        const rawMessage = cause.message || '';
+        const references = cause.references || [];
+
+        // Detectar atributo faltante e traduzir
+        if (code.includes('missing') && code.includes('required')) {
+          // Extrair nome do atributo da mensagem ou references
+          const attrMatch = rawMessage.match(/\[([A-Z_]+)\]/);
+          const attrId = attrMatch ? attrMatch[1] : (references[0] || '');
+          const friendlyName = ATTRIBUTE_FRIENDLY_NAMES[attrId] || attrId;
+
+          if (attrId === 'GTIN') {
+            messages.push(`O Mercado Livre exige o código de barras (GTIN/EAN) para esta categoria. Edite o produto e preencha este campo.`);
+          } else if (friendlyName) {
+            messages.push(`Atributo obrigatório faltando: "${friendlyName}" (${attrId}). Edite o produto e preencha este campo.`);
+          } else {
+            messages.push(`Atributo obrigatório faltando: ${rawMessage} (${code})`);
+          }
+          continue;
+        }
+
+        // Detectar valor inválido
+        if (code.includes('invalid_value') || code.includes('invalid')) {
+          const attrMatch = rawMessage.match(/\[([A-Z_]+)\]/);
+          const attrId = attrMatch ? attrMatch[1] : '';
+          const friendlyName = ATTRIBUTE_FRIENDLY_NAMES[attrId] || attrId;
+          if (friendlyName) {
+            messages.push(`Valor inválido para o atributo "${friendlyName}": ${rawMessage}`);
+          } else {
+            messages.push(rawMessage || ML_ERROR_TRANSLATIONS[code] || code);
+          }
+          continue;
+        }
+
+        // Fallback para outros códigos
+        const translated = ML_ERROR_TRANSLATIONS[code];
+        if (translated) {
+          messages.push(`${translated} ${rawMessage ? `(${rawMessage})` : ''}`);
+        } else if (rawMessage && code) {
+          messages.push(`${rawMessage} (${code})`);
+        } else if (rawMessage) {
+          messages.push(rawMessage);
+        } else if (code) {
+          messages.push(code);
+        }
+      }
+    }
+
+    // 2. Fallback: mensagem de nível superior (error + message)
+    if (messages.length === 0 && errorData.message) {
+      if (typeof errorData.message === 'string' && errorData.message.includes('family_name')) {
+        messages.push('Esta categoria usa o modelo de catálogo "User Products" do Mercado Livre. O sistema tentará ajustar automaticamente.');
+      } else if (errorData.message === 'body.invalid_fields') {
+        // Extrair campos inválidos se disponíveis
+        const invalidFields = errorData.fields || [];
+        if (invalidFields.length > 0) {
+          messages.push(`Campos inválidos no corpo da requisição: ${invalidFields.join(', ')}. Verifique se os dados estão corretos.`);
+        } else {
+          messages.push(`O Mercado Livre rejeitou campos do anúncio. Detalhes: ${JSON.stringify(errorData)}`);
+        }
+      } else {
+        const errorLabel = errorData.error ? `${errorData.error}: ` : '';
+        messages.push(`${errorLabel}${errorData.message}`);
+      }
+    }
+
+    return messages.join(' | ');
+  }
+
   async validateItem(accessToken: string, itemData: any): Promise<{ valid: boolean; error?: string; rawError?: any }> {
     const url = `${this.baseUrl}/items/validate`;
     const response = await fetch(url, {
@@ -72,32 +257,7 @@ export class MercadoLivreApiService {
     const errorData = await response.json().catch(() => null);
     console.error('[ML API Validation Error] POST /items/validate response:', JSON.stringify(errorData, null, 2));
 
-    let friendlyMessage = '';
-    if (errorData?.cause && Array.isArray(errorData.cause)) {
-      const errorMessages = errorData.cause
-        .filter((c: any) => c.type !== 'warning')
-        .map((c: any) => {
-          if (c.code === 'item.attribute.missing_conditional_required' && c.message?.includes('GTIN')) {
-            return 'O Mercado Livre exige o código de barras (GTIN/EAN) para publicar produtos nesta categoria.';
-          }
-          if (c.message && c.code) return `${c.message} (${c.code})`;
-          if (c.message) return c.message;
-          return c.code;
-        })
-        .filter(Boolean);
-
-      if (errorMessages.length > 0) {
-        friendlyMessage = errorMessages.join(' | ');
-      }
-    }
-
-    if (!friendlyMessage && errorData) {
-      if (errorData.error && errorData.message) {
-        friendlyMessage = `${errorData.error} (${errorData.message})`;
-      } else if (errorData.message) {
-        friendlyMessage = `${errorData.message} - Detalhes do ML: ${JSON.stringify(errorData)}`;
-      }
-    }
+    const friendlyMessage = this.formatMLErrors(errorData);
 
     return {
       valid: false,
@@ -122,34 +282,7 @@ export class MercadoLivreApiService {
       const errorData = await response.json().catch(() => null);
       console.error('[ML API Error] POST /items response:', JSON.stringify(errorData, null, 2));
       
-      let friendlyMessage = '';
-      if (errorData?.cause && Array.isArray(errorData.cause)) {
-        const errorMessages = errorData.cause
-          .filter((c: any) => c.type !== 'warning')
-          .map((c: any) => {
-            if (c.code === 'item.attribute.missing_conditional_required' && c.message?.includes('GTIN')) {
-              return 'O Mercado Livre exige o código de barras (GTIN/EAN) para publicar produtos nesta categoria. Edite o produto e preencha este campo.';
-            }
-            if (c.message && c.code) return `${c.message} (${c.code})`;
-            if (c.message) return c.message;
-            return c.code;
-          })
-          .filter(Boolean);
-        
-        if (errorMessages.length > 0) {
-          friendlyMessage = errorMessages.join(' | ');
-        }
-      }
-
-      if (!friendlyMessage && errorData?.message) {
-        if (typeof errorData.message === 'string' && errorData.message.includes('family_name')) {
-          friendlyMessage = 'O Mercado Livre exige a propriedade "family_name" para esta categoria/conta no novo modelo de catálogo (User Products).';
-        } else if (errorData.message === 'body.invalid_fields') {
-          friendlyMessage = `O Mercado Livre recusou os dados do anúncio (campos inválidos): ${JSON.stringify(errorData)}`;
-        } else {
-          friendlyMessage = `${errorData.message} - Detalhes do ML: ${JSON.stringify(errorData)}`;
-        }
-      }
+      const friendlyMessage = this.formatMLErrors(errorData);
 
       throw new Error(friendlyMessage ? friendlyMessage : `Erro ao criar anúncio no Mercado Livre: ${JSON.stringify(errorData || response.statusText)}`);
     }

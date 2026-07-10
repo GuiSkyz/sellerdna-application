@@ -46,14 +46,14 @@ export class FetchDriveImagesUseCase {
     const subfolderId = await this.googleDriveService.findSubfolderByName(finalFolderId, product.name);
     
     if (!subfolderId) {
-      throw new Error(`Pasta '${product.name}' não encontrada dentro da sua pasta principal do Drive.`);
+      throw new Error(`Não encontrado pasta do produto "${product.name}" no Google Drive.`);
     }
 
     // 5. Fetch images files inside that subfolder
     const driveFiles = await this.googleDriveService.getImagesFiles(subfolderId);
 
     if (driveFiles.length === 0) {
-      throw new Error(`Nenhuma imagem encontrada na pasta '${product.name}'.`);
+      throw new Error(`Não encontrado imagens na pasta do produto "${product.name}" no Google Drive.`);
     }
 
     if (driveFiles.length < 4) {

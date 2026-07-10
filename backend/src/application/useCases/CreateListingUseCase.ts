@@ -15,6 +15,27 @@ export interface CreateListingInput {
   categoryId?: string;
 }
 
+/**
+ * Mapeamento de campos do produto local para atributos do Mercado Livre.
+ * Usado para preencher automaticamente os atributos obrigatórios da categoria.
+ */
+const PRODUCT_TO_ML_ATTRIBUTE_MAP: Record<string, (product: any) => string | undefined> = {
+  'BRAND': (p) => p.brand,
+  'GTIN': (p) => p.gtin,
+  'COLOR': (p) => p.color,
+  'SIZE': (p) => p.size || p.sizeMl,
+  'WEIGHT': (p) => p.weight ? String(p.weight) : undefined,
+  'SELLER_SKU': (p) => p.sku,
+  'WARRANTY_TYPE': (p) => (p.warrantyType && p.warrantyType !== 'Sem garantia') ? p.warrantyType : undefined,
+  'WARRANTY_TIME': (p) => p.warrantyTime,
+  'GENDER': (p) => p.gender,
+  'PERFUME_TYPE': (p) => p.perfumeType,
+  'VOLUME': (p) => p.sizeMl ? `${p.sizeMl} ml` : undefined,
+  'LINE': (p) => p.line,
+  'MODEL': (p) => p.model,
+  'FRAGRANCE_NAME': (p) => p.name,
+};
+
 export class CreateListingUseCase {
   constructor(
     private mlApiService: MercadoLivreApiService,
@@ -51,24 +72,11 @@ export class CreateListingUseCase {
       }
     }
 
-    const attributes: any[] = [];
-    if (product.gtin) {
-      attributes.push({ id: 'GTIN', value_name: product.gtin });
-    }
-    if (product.warrantyType && product.warrantyType !== 'Sem garantia') {
-      attributes.push({ id: 'WARRANTY_TYPE', value_name: product.warrantyType });
-      if (product.warrantyTime) {
-        attributes.push({ id: 'WARRANTY_TIME', value_name: product.warrantyTime });
-      }
-    }
+    // 3. Buscar atributos obrigatórios da categoria PROATIVAMENTE
+    const categoryInfo = await this.mlApiService.getCategoryRequiredInfo(resolvedCategoryId as string);
 
-    if (product.mlAttributes) {
-      for (const [key, value] of Object.entries(product.mlAttributes)) {
-        if (value && String(value).trim() !== '') {
-          attributes.push({ id: key, value_name: String(value) });
-        }
-      }
-    }
+    // 4. Montar atributos com base nos dados do produto + atributos obrigatórios da categoria
+    const attributes = this.buildAttributes(product, categoryInfo.requiredAttributes);
 
     // Helper function to format image URL (handles Google Drive links)
     const formatImageUrl = (url: string) => {
@@ -88,7 +96,7 @@ export class CreateListingUseCase {
       return url;
     };
 
-    // 3. Transform Product to ML Item Format
+    // 5. Transform Product to ML Item Format (imagens)
     let mlPictures: { source: string }[] = [];
     if (product.imageUrls && product.imageUrls.length > 0) {
       mlPictures = product.imageUrls.map(url => ({ source: formatImageUrl(url) }));
@@ -100,8 +108,8 @@ export class CreateListingUseCase {
       throw new Error('O produto precisa ter pelo menos 1 imagem cadastrada para ser publicado no Mercado Livre.');
     }
 
+    // 6. Montar o payload correto com base no modelo da categoria
     const mlItemPayload: any = {
-      title: title.substring(0, 60), // ML max limit
       category_id: resolvedCategoryId as string,
       price: Number(price),
       currency_id: 'BRL',
@@ -118,7 +126,15 @@ export class CreateListingUseCase {
       }
     };
 
-    // 4. Pré-validação oficial na API do Mercado Livre (/items/validate) antes de publicar
+    // Decisão proativa: Se a categoria usa modelo User Products, enviar family_name ao invés de title
+    if (categoryInfo.usesUserProductsModel) {
+      mlItemPayload.family_name = title.substring(0, 60);
+      console.log(`[CreateListing] Categoria ${resolvedCategoryId} usa modelo User Products. Usando family_name ao invés de title.`);
+    } else {
+      mlItemPayload.title = title.substring(0, 60); // ML max limit
+    }
+
+    // 7. Pré-validação oficial na API do Mercado Livre (/items/validate) antes de publicar
     let payloadToCreate = { ...mlItemPayload };
     const initialValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
 
@@ -126,6 +142,7 @@ export class CreateListingUseCase {
       const errorStr = String(initialValidation.error || '');
       const rawErrStr = JSON.stringify(initialValidation.rawError || {});
 
+      // Verificar se o erro é sobre title/family_name (caso a detecção proativa tenha falhado)
       const isUserProductsModelError =
         errorStr.includes('family_name') ||
         rawErrStr.includes('family_name') ||
@@ -135,37 +152,28 @@ export class CreateListingUseCase {
         rawErrStr.includes('The fields [title] are invalid') ||
         (rawErrStr.includes('body.invalid_fields') && rawErrStr.includes('title'));
 
-      if (isUserProductsModelError) {
-        // No modelo User Products (ou categorias migradas), a API rejeita "title" no nível superior.
-        // Devemos remover "title" e enviar "family_name".
+      if (isUserProductsModelError && payloadToCreate.title) {
+        // Fallback reativo: remover title e usar family_name
+        console.log(`[CreateListing] Erro de modelo User Products detectado reativamente. Trocando title → family_name.`);
         const { title: _removedTitle, ...restPayload } = payloadToCreate;
-        const userProductsPayload = {
+        payloadToCreate = {
           ...restPayload,
           family_name: title.substring(0, 60),
         };
 
-        const secondValidation = await this.mlApiService.validateItem(accountToken, userProductsPayload);
-        if (secondValidation.valid) {
-          payloadToCreate = userProductsPayload;
-        } else {
-          // Caso alguma categoria específica exija tanto title quanto family_name
-          const payloadWithBoth = {
-            ...userProductsPayload,
-            title: title.substring(0, 60),
-          };
-          const thirdValidation = await this.mlApiService.validateItem(accountToken, payloadWithBoth);
-          if (thirdValidation.valid) {
-            payloadToCreate = payloadWithBoth;
-          } else {
-            throw new Error(secondValidation.error || initialValidation.error || 'Falha na validação do anúncio no Mercado Livre.');
-          }
+        // Revalidar com payload ajustado
+        const retryValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+        if (!retryValidation.valid) {
+          // Apresentar erro detalhado ao usuário
+          throw new Error(this.buildActionableErrorMessage(retryValidation.error || initialValidation.error || '', categoryInfo));
         }
       } else {
-        throw new Error(initialValidation.error || 'Falha na validação do anúncio no Mercado Livre.');
+        // Erro NÃO é sobre title/family_name — apresentar erro detalhado com orientação
+        throw new Error(this.buildActionableErrorMessage(initialValidation.error || '', categoryInfo));
       }
     }
 
-    // 5. Call ML API to create item de forma segura após aprovação na validação
+    // 8. Criar anúncio no ML
     let mlResponse;
     try {
       mlResponse = await this.mlApiService.createItem(accountToken, payloadToCreate);
@@ -178,6 +186,7 @@ export class CreateListingUseCase {
         (errMsg.includes('body.invalid_fields') && errMsg.includes('title'));
 
       if (isUserProductsCreateError && payloadToCreate.title) {
+        // Retry: trocar title → family_name
         const { title: _removedTitle, ...restPayload } = payloadToCreate;
         const retryPayload = {
           ...restPayload,
@@ -185,11 +194,11 @@ export class CreateListingUseCase {
         };
         mlResponse = await this.mlApiService.createItem(accountToken, retryPayload);
       } else {
-        throw createErr;
+        throw new Error(this.buildActionableErrorMessage(errMsg, categoryInfo));
       }
     }
     
-    // 4.1. Call ML API to add description (ML requires this to be a separate call)
+    // 9. Adicionar descrição (ML exige chamada separada)
     if (description && description.trim() !== '') {
       try {
         await fetch(`https://api.mercadolibre.com/items/${mlResponse.id}/description`, {
@@ -205,7 +214,7 @@ export class CreateListingUseCase {
       }
     }
 
-    // 5. Build Local Record
+    // 10. Montar registro local
     const newListing = {
       id: randomUUID(),
       accountId: accountId,
@@ -219,7 +228,7 @@ export class CreateListingUseCase {
       createdAt: new Date()
     };
 
-    // 6. Save Listing to DB
+    // 11. Salvar anúncio no banco de dados local
     const listingToInsert = {
       id: newListing.id,
       account_id: accountId,
@@ -242,5 +251,80 @@ export class CreateListingUseCase {
     }
 
     return newListing;
+  }
+
+  /**
+   * Monta a lista de atributos para o payload do ML, combinando:
+   * 1. Dados do produto local (brand, gtin, warranty, etc.)
+   * 2. mlAttributes customizados salvos pelo usuário
+   * 3. Atributos obrigatórios da categoria que podem ser preenchidos automaticamente
+   */
+  private buildAttributes(product: any, requiredAttributes: any[]): any[] {
+    const attributeMap = new Map<string, string>();
+
+    // 1. Mapear atributos do produto usando o mapeamento automático
+    for (const [attrId, extractor] of Object.entries(PRODUCT_TO_ML_ATTRIBUTE_MAP)) {
+      const value = extractor(product);
+      if (value && String(value).trim() !== '') {
+        attributeMap.set(attrId, String(value));
+      }
+    }
+
+    // 2. Sobrescrever/adicionar com mlAttributes customizados (prioridade sobre automático)
+    if (product.mlAttributes) {
+      for (const [key, value] of Object.entries(product.mlAttributes)) {
+        if (value && String(value).trim() !== '') {
+          attributeMap.set(key, String(value));
+        }
+      }
+    }
+
+    // 3. Preencher atributos obrigatórios da categoria com valores padrão (se disponíveis e não já preenchidos)
+    for (const reqAttr of requiredAttributes) {
+      if (!attributeMap.has(reqAttr.id) && reqAttr.default_value) {
+        attributeMap.set(reqAttr.id, reqAttr.default_value);
+      }
+    }
+
+    // Converter o Map em array no formato que o ML aceita
+    const attributes: any[] = [];
+    for (const [id, value] of attributeMap.entries()) {
+      attributes.push({ id, value_name: value });
+    }
+
+    return attributes;
+  }
+
+  /**
+   * Constrói uma mensagem de erro acionável para o usuário,
+   * informando exatamente quais campos estão faltando e como preenchê-los.
+   */
+  private buildActionableErrorMessage(rawError: string, categoryInfo: any): string {
+    const parts: string[] = [];
+
+    // Adicionar a mensagem original do ML
+    if (rawError) {
+      parts.push(rawError);
+    }
+
+    // Se temos informações da categoria, listar os atributos obrigatórios não preenchidos
+    if (categoryInfo && categoryInfo.requiredAttributes && categoryInfo.requiredAttributes.length > 0) {
+      const missingHints: string[] = [];
+
+      // Verificar se a mensagem de erro menciona atributos específicos
+      for (const attr of categoryInfo.requiredAttributes) {
+        if (rawError.includes(attr.id) || rawError.includes(attr.name)) {
+          const friendlyName = attr.name || attr.id;
+          missingHints.push(`• "${friendlyName}" (${attr.id}): Edite o produto e preencha este campo.`);
+        }
+      }
+
+      if (missingHints.length > 0) {
+        parts.push('\n\nCampos que precisam ser preenchidos no cadastro do produto:');
+        parts.push(missingHints.join('\n'));
+      }
+    }
+
+    return parts.join('\n') || 'Falha na validação do anúncio no Mercado Livre. Verifique os dados do produto.';
   }
 }
