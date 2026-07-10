@@ -121,11 +121,9 @@ export class CreateListingUseCase {
       listing_type_id: product.listingTypeId || 'gold_special',
       pictures: mlPictures,
       attributes: attributes.length > 0 ? attributes : undefined,
-      shipping: {
-        mode: product.shippingMode || 'me2',
-        local_pick_up: false,
-        free_shipping: Number(price) >= 79
-      }
+      shipping: product.shippingMode === 'custom'
+        ? { mode: 'custom', local_pick_up: true, free_shipping: false }
+        : { mode: product.shippingMode || 'me2', local_pick_up: false, free_shipping: Number(price) >= 79 }
     };
 
     // Decisão proativa: Se a categoria usa modelo User Products, enviar family_name ao invés de title
@@ -154,16 +152,39 @@ export class CreateListingUseCase {
         rawErrStr.includes('free shipping');
 
       if (isShippingError) {
-        console.log(`[CreateListing] Erro/Aviso de frete (shipping) detectado. Ajustando modo de frete e revalidando.`);
-        payloadToCreate = {
-          ...payloadToCreate,
-          shipping: {
-            mode: 'not_specified',
-            local_pick_up: false,
-            free_shipping: Number(price) >= 79
+        console.log(`[CreateListing] Erro de frete/shipping detectado ("${errorStr}"). Tentando Fallback 1: Omitir campo shipping para usar padrão da conta.`);
+        const { shipping: _removedShipping, ...payloadWithoutShipping } = payloadToCreate;
+        let testVal = await this.mlApiService.validateItem(accountToken, payloadWithoutShipping);
+
+        if (testVal.valid) {
+          console.log(`[CreateListing] Fallback 1 bem-sucedido! Omitindo campo shipping para usar padrão da conta do vendedor.`);
+          payloadToCreate = payloadWithoutShipping;
+          initialValidation = testVal;
+        } else {
+          console.log(`[CreateListing] Fallback 1 falhou. Tentando Fallback 2: Modo custom (frete a combinar / sem Mercado Envios).`);
+          const payloadCustomShipping = {
+            ...payloadToCreate,
+            shipping: { mode: 'custom', local_pick_up: true, free_shipping: false }
+          };
+          testVal = await this.mlApiService.validateItem(accountToken, payloadCustomShipping);
+
+          if (testVal.valid) {
+            console.log(`[CreateListing] Fallback 2 bem-sucedido! Usando shipping mode 'custom'.`);
+            payloadToCreate = payloadCustomShipping;
+            initialValidation = testVal;
+          } else {
+            console.log(`[CreateListing] Fallback 2 falhou. Tentando Fallback 3: Modo not_specified.`);
+            const payloadNotSpecified = {
+              ...payloadToCreate,
+              shipping: { mode: 'not_specified', local_pick_up: false, free_shipping: Number(price) >= 79 }
+            };
+            testVal = await this.mlApiService.validateItem(accountToken, payloadNotSpecified);
+            if (testVal.valid) {
+              payloadToCreate = payloadNotSpecified;
+              initialValidation = testVal;
+            }
           }
-        };
-        initialValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+        }
       }
 
       if (!initialValidation.valid) {
