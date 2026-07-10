@@ -87,7 +87,6 @@ export class CreateListingUseCase {
 
     const mlItemPayload: any = {
       title: title.substring(0, 60), // ML max limit
-      family_name: title.substring(0, 60), // Obrigatório para contas/categorias no modelo User Products (UP) do Mercado Livre
       category_id: resolvedCategoryId as string,
       price: price,
       currency_id: 'BRL',
@@ -104,8 +103,21 @@ export class CreateListingUseCase {
       }
     };
 
-    // 4. Call ML API to create item
-    const mlResponse = await this.mlApiService.createItem(accountToken, mlItemPayload);
+    // 4. Call ML API to create item (com fallback automático para User Products caso o ML exija family_name)
+    let mlResponse: any;
+    try {
+      mlResponse = await this.mlApiService.createItem(accountToken, mlItemPayload);
+    } catch (createError: any) {
+      const errorStr = String(createError?.message || createError);
+      if (errorStr.includes('family_name')) {
+        mlResponse = await this.mlApiService.createItem(accountToken, {
+          ...mlItemPayload,
+          family_name: title.substring(0, 60)
+        });
+      } else {
+        throw createError;
+      }
+    }
     
     // 4.1. Call ML API to add description (ML requires this to be a separate call)
     if (description && description.trim() !== '') {

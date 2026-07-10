@@ -72,14 +72,16 @@ export class MercadoLivreApiService {
       let friendlyMessage = '';
       if (errorData?.cause && Array.isArray(errorData.cause)) {
         const errorMessages = errorData.cause
-          .filter((c: any) => c.type === 'error') // Ignore warnings
+          .filter((c: any) => c.type !== 'warning') // Incluir erros mesmo sem o campo type explícito
           .map((c: any) => {
-            if (c.code === 'item.attribute.missing_conditional_required' && c.message.includes('GTIN')) {
+            if (c.code === 'item.attribute.missing_conditional_required' && c.message?.includes('GTIN')) {
               return 'O Mercado Livre exige o código de barras (GTIN/EAN) para publicar produtos nesta categoria. Edite o produto e preencha este campo.';
             }
+            if (c.message && c.code) return `${c.message} (${c.code})`;
             if (c.message) return c.message;
             return c.code;
-          });
+          })
+          .filter(Boolean);
         
         if (errorMessages.length > 0) {
           friendlyMessage = errorMessages.join(' | ');
@@ -89,6 +91,8 @@ export class MercadoLivreApiService {
       if (!friendlyMessage && errorData?.message) {
         if (typeof errorData.message === 'string' && errorData.message.includes('family_name')) {
           friendlyMessage = 'O Mercado Livre exige a propriedade "family_name" para esta categoria/conta no novo modelo de catálogo (User Products).';
+        } else if (errorData.message === 'body.invalid_fields' && errorData.cause) {
+          friendlyMessage = `Campos inválidos no anúncio: ${JSON.stringify(errorData.cause)}`;
         } else {
           friendlyMessage = errorData.message;
         }
