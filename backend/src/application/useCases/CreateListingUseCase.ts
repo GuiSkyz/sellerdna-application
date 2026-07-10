@@ -123,7 +123,21 @@ export class CreateListingUseCase {
       attributes: attributes.length > 0 ? attributes : undefined,
       shipping: product.shippingMode === 'custom'
         ? { mode: 'custom', local_pick_up: true, free_shipping: false }
-        : { mode: product.shippingMode || 'me2', local_pick_up: false, free_shipping: Number(price) >= 79 }
+        : {
+            mode: product.shippingMode || 'me2',
+            local_pick_up: false,
+            free_shipping: Number(price) >= 79,
+            free_methods: Number(price) >= 79 ? [
+              {
+                id: 100009,
+                rule: {
+                  default: true,
+                  free_mode: 'country',
+                  free_shipping_flag: true
+                }
+              }
+            ] : undefined
+          }
     };
 
     // Decisão proativa: Se a categoria usa modelo User Products, enviar family_name ao invés de title
@@ -152,25 +166,25 @@ export class CreateListingUseCase {
         rawErrStr.includes('free shipping');
 
       if (isShippingError) {
-        console.log(`[CreateListing] Erro de frete/shipping detectado ("${errorStr}"). Tentando Fallback 1: Omitir campo shipping para usar padrão da conta.`);
+        console.log(`[CreateListing] Erro/aviso de frete detectado ("${errorStr}"). Tentando Fallback 1: Omitir campo shipping para usar padrão da conta Correios.`);
         const { shipping: _removedShipping, ...payloadWithoutShipping } = payloadToCreate;
         let testVal = await this.mlApiService.validateItem(accountToken, payloadWithoutShipping);
 
         if (testVal.valid) {
-          console.log(`[CreateListing] Fallback 1 bem-sucedido! Omitindo campo shipping para usar padrão da conta do vendedor.`);
+          console.log(`[CreateListing] Fallback 1 bem-sucedido! Omitindo campo shipping para usar padrão da conta.`);
           payloadToCreate = payloadWithoutShipping;
           initialValidation = testVal;
         } else {
-          console.log(`[CreateListing] Fallback 1 falhou. Tentando Fallback 2: Modo custom (frete a combinar / sem Mercado Envios).`);
-          const payloadCustomShipping = {
+          console.log(`[CreateListing] Fallback 1 falhou. Tentando Fallback 2: me2 limpo sem free_methods.`);
+          const payloadCleanMe2 = {
             ...payloadToCreate,
-            shipping: { mode: 'custom', local_pick_up: true, free_shipping: false }
+            shipping: { mode: 'me2', local_pick_up: false, free_shipping: Number(price) >= 79 }
           };
-          testVal = await this.mlApiService.validateItem(accountToken, payloadCustomShipping);
+          testVal = await this.mlApiService.validateItem(accountToken, payloadCleanMe2);
 
           if (testVal.valid) {
-            console.log(`[CreateListing] Fallback 2 bem-sucedido! Usando shipping mode 'custom'.`);
-            payloadToCreate = payloadCustomShipping;
+            console.log(`[CreateListing] Fallback 2 bem-sucedido!`);
+            payloadToCreate = payloadCleanMe2;
             initialValidation = testVal;
           } else {
             console.log(`[CreateListing] Fallback 2 falhou. Tentando Fallback 3: Modo not_specified.`);
@@ -191,31 +205,48 @@ export class CreateListingUseCase {
         const errorStr2 = String(initialValidation.error || '');
         const rawErrStr2 = JSON.stringify(initialValidation.rawError || {});
 
-        // Verificar se o erro é sobre title/family_name (caso a detecção proativa tenha falhado)
-        const isUserProductsModelError =
-          errorStr2.includes('family_name') ||
-          rawErrStr2.includes('family_name') ||
-          errorStr2.includes('fields [title] are invalid') ||
-          errorStr2.includes('The fields [title] are invalid') ||
-          rawErrStr2.includes('fields [title] are invalid') ||
-          rawErrStr2.includes('The fields [title] are invalid') ||
-          (rawErrStr2.includes('body.invalid_fields') && rawErrStr2.includes('title'));
+        // Verificar se o erro é exclusivamente um aviso/nota não-fatal de frete do Mercado Livre
+        const isNonFatalShippingWarningOnly =
+          (errorStr2.includes('mode me1') || errorStr2.includes('Mandatory free shipping added')) &&
+          !errorStr2.toLowerCase().includes('attribute') &&
+          !errorStr2.toLowerCase().includes('brand') &&
+          !errorStr2.toLowerCase().includes('gtin') &&
+          !errorStr2.toLowerCase().includes('price');
 
-        if (isUserProductsModelError && payloadToCreate.title) {
-          // Fallback reativo: remover title e usar family_name
-          console.log(`[CreateListing] Erro de modelo User Products detectado reativamente. Trocando title → family_name.`);
-          const { title: _removedTitle, ...restPayload } = payloadToCreate;
-          payloadToCreate = {
-            ...restPayload,
-            family_name: title.substring(0, 60),
-          };
-
-          const retryValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
-          if (!retryValidation.valid) {
-            throw new Error(this.buildActionableErrorMessage(retryValidation.error || initialValidation.error || '', categoryInfo));
-          }
+        if (isNonFatalShippingWarningOnly) {
+          console.log(`[CreateListing] Aviso não-fatal de frete detectado em /items/validate ("${errorStr2}"). Prosseguindo para criação do item.`);
         } else {
-          throw new Error(this.buildActionableErrorMessage(initialValidation.error || '', categoryInfo));
+          // Verificar se o erro é sobre title/family_name (caso a detecção proativa tenha falhado)
+          const isUserProductsModelError =
+            errorStr2.includes('family_name') ||
+            rawErrStr2.includes('family_name') ||
+            errorStr2.includes('fields [title] are invalid') ||
+            errorStr2.includes('The fields [title] are invalid') ||
+            rawErrStr2.includes('fields [title] are invalid') ||
+            rawErrStr2.includes('The fields [title] are invalid') ||
+            (rawErrStr2.includes('body.invalid_fields') && rawErrStr2.includes('title'));
+
+          if (isUserProductsModelError && payloadToCreate.title) {
+            console.log(`[CreateListing] Erro de modelo User Products detectado reativamente. Trocando title → family_name.`);
+            const { title: _removedTitle, ...restPayload } = payloadToCreate;
+            payloadToCreate = {
+              ...restPayload,
+              family_name: title.substring(0, 60),
+            };
+
+            const retryValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+            if (!retryValidation.valid) {
+              const errRetryStr = String(retryValidation.error || '');
+              const isRetryShippingOnly =
+                (errRetryStr.includes('mode me1') || errRetryStr.includes('Mandatory free shipping added')) &&
+                !errRetryStr.toLowerCase().includes('attribute');
+              if (!isRetryShippingOnly) {
+                throw new Error(this.buildActionableErrorMessage(retryValidation.error || initialValidation.error || '', categoryInfo));
+              }
+            }
+          } else {
+            throw new Error(this.buildActionableErrorMessage(initialValidation.error || '', categoryInfo));
+          }
         }
       }
     }
