@@ -85,8 +85,9 @@ export class CreateListingUseCase {
       mlPictures = [{ source: formatImageUrl(product.imageUrl) }];
     }
 
-    const mlItemPayload = {
+    const mlItemPayload: any = {
       title: title.substring(0, 60), // ML max limit
+      family_name: title.substring(0, 60), // Obrigatório para contas/categorias no modelo User Products (UP) do Mercado Livre
       category_id: resolvedCategoryId as string,
       price: price,
       currency_id: 'BRL',

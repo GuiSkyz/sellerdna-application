@@ -86,6 +86,14 @@ export class MercadoLivreApiService {
         }
       }
 
+      if (!friendlyMessage && errorData?.message) {
+        if (typeof errorData.message === 'string' && errorData.message.includes('family_name')) {
+          friendlyMessage = 'O Mercado Livre exige a propriedade "family_name" para esta categoria/conta no novo modelo de catálogo (User Products).';
+        } else {
+          friendlyMessage = errorData.message;
+        }
+      }
+
       throw new Error(friendlyMessage ? friendlyMessage : `Erro ao criar anúncio no Mercado Livre: ${JSON.stringify(errorData || response.statusText)}`);
     }
 
