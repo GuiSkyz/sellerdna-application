@@ -54,6 +54,54 @@ export class MercadoLivreApiService {
     return data;
   }
 
+  async validateItem(accessToken: string, itemData: any): Promise<{ valid: boolean; error?: string; rawError?: any }> {
+    const url = `${this.baseUrl}/items/validate`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(itemData),
+    });
+
+    if (response.ok || response.status === 204) {
+      return { valid: true };
+    }
+
+    const errorData = await response.json().catch(() => null);
+    console.error('[ML API Validation Error] POST /items/validate response:', JSON.stringify(errorData, null, 2));
+
+    let friendlyMessage = '';
+    if (errorData?.cause && Array.isArray(errorData.cause)) {
+      const errorMessages = errorData.cause
+        .filter((c: any) => c.type !== 'warning')
+        .map((c: any) => {
+          if (c.code === 'item.attribute.missing_conditional_required' && c.message?.includes('GTIN')) {
+            return 'O Mercado Livre exige o código de barras (GTIN/EAN) para publicar produtos nesta categoria.';
+          }
+          if (c.message && c.code) return `${c.message} (${c.code})`;
+          if (c.message) return c.message;
+          return c.code;
+        })
+        .filter(Boolean);
+
+      if (errorMessages.length > 0) {
+        friendlyMessage = errorMessages.join(' | ');
+      }
+    }
+
+    if (!friendlyMessage && errorData?.message) {
+      friendlyMessage = `${errorData.message} - Detalhes do ML: ${JSON.stringify(errorData)}`;
+    }
+
+    return {
+      valid: false,
+      error: friendlyMessage || `Validação do Mercado Livre falhou: ${JSON.stringify(errorData)}`,
+      rawError: errorData,
+    };
+  }
+
   async createItem(accessToken: string, itemData: any): Promise<any> {
     const url = `${this.baseUrl}/items`;
     
@@ -68,11 +116,12 @@ export class MercadoLivreApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
+      console.error('[ML API Error] POST /items response:', JSON.stringify(errorData, null, 2));
       
       let friendlyMessage = '';
       if (errorData?.cause && Array.isArray(errorData.cause)) {
         const errorMessages = errorData.cause
-          .filter((c: any) => c.type !== 'warning') // Incluir erros mesmo sem o campo type explícito
+          .filter((c: any) => c.type !== 'warning')
           .map((c: any) => {
             if (c.code === 'item.attribute.missing_conditional_required' && c.message?.includes('GTIN')) {
               return 'O Mercado Livre exige o código de barras (GTIN/EAN) para publicar produtos nesta categoria. Edite o produto e preencha este campo.';
@@ -91,10 +140,10 @@ export class MercadoLivreApiService {
       if (!friendlyMessage && errorData?.message) {
         if (typeof errorData.message === 'string' && errorData.message.includes('family_name')) {
           friendlyMessage = 'O Mercado Livre exige a propriedade "family_name" para esta categoria/conta no novo modelo de catálogo (User Products).';
-        } else if (errorData.message === 'body.invalid_fields' && errorData.cause) {
-          friendlyMessage = `Campos inválidos no anúncio: ${JSON.stringify(errorData.cause)}`;
+        } else if (errorData.message === 'body.invalid_fields') {
+          friendlyMessage = `O Mercado Livre recusou os dados do anúncio (campos inválidos): ${JSON.stringify(errorData)}`;
         } else {
-          friendlyMessage = errorData.message;
+          friendlyMessage = `${errorData.message} - Detalhes do ML: ${JSON.stringify(errorData)}`;
         }
       }
 

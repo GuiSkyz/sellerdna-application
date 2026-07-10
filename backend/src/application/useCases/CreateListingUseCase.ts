@@ -85,16 +85,20 @@ export class CreateListingUseCase {
       mlPictures = [{ source: formatImageUrl(product.imageUrl) }];
     }
 
+    if (mlPictures.length === 0) {
+      throw new Error('O produto precisa ter pelo menos 1 imagem cadastrada para ser publicado no Mercado Livre.');
+    }
+
     const mlItemPayload: any = {
       title: title.substring(0, 60), // ML max limit
       category_id: resolvedCategoryId as string,
-      price: price,
+      price: Number(price),
       currency_id: 'BRL',
-      available_quantity: quantity,
+      available_quantity: Number(quantity) || 1,
       buying_mode: 'buy_it_now',
       condition: product.condition === 'Usado' ? 'used' : 'new',
       listing_type_id: product.listingTypeId || 'gold_special',
-      pictures: mlPictures.length > 0 ? mlPictures : [],
+      pictures: mlPictures,
       attributes: attributes.length > 0 ? attributes : undefined,
       shipping: {
         mode: 'me2',
@@ -103,21 +107,29 @@ export class CreateListingUseCase {
       }
     };
 
-    // 4. Call ML API to create item (com fallback automático para User Products caso o ML exija family_name)
-    let mlResponse: any;
-    try {
-      mlResponse = await this.mlApiService.createItem(accountToken, mlItemPayload);
-    } catch (createError: any) {
-      const errorStr = String(createError?.message || createError);
+    // 4. Pré-validação oficial na API do Mercado Livre (/items/validate) antes de publicar
+    let payloadToCreate = { ...mlItemPayload };
+    const initialValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+
+    if (!initialValidation.valid) {
+      const errorStr = String(initialValidation.error || '');
       if (errorStr.includes('family_name')) {
-        mlResponse = await this.mlApiService.createItem(accountToken, {
-          ...mlItemPayload,
-          family_name: title.substring(0, 60)
-        });
+        // Ajusta payload com family_name para contas/categorias em User Products
+        payloadToCreate = {
+          ...payloadToCreate,
+          family_name: title.substring(0, 60),
+        };
+        const secondValidation = await this.mlApiService.validateItem(accountToken, payloadToCreate);
+        if (!secondValidation.valid) {
+          throw new Error(secondValidation.error || 'Falha na validação do anúncio no Mercado Livre.');
+        }
       } else {
-        throw createError;
+        throw new Error(initialValidation.error || 'Falha na validação do anúncio no Mercado Livre.');
       }
     }
+
+    // 5. Call ML API to create item de forma segura após aprovação na validação
+    const mlResponse = await this.mlApiService.createItem(accountToken, payloadToCreate);
     
     // 4.1. Call ML API to add description (ML requires this to be a separate call)
     if (description && description.trim() !== '') {
