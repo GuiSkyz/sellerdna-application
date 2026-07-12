@@ -639,6 +639,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               categoryId={formData.mlCategoryId}
               categoryName={formData.mlCategoryName}
               attributesData={formData.mlAttributes}
+              productData={{
+                name: formData.name,
+                brand: formData.brand,
+                sizeMl: formData.sizeMl,
+                gender: formData.gender,
+                perfumeType: formData.perfumeType,
+                gtin: formData.gtin,
+                sku: formData.sku,
+                weight: formData.weight,
+              }}
               onCategorySelected={(id, name) => setFormData(prev => ({ ...prev, mlCategoryId: id, mlCategoryName: name }))}
               onAttributeChange={(key, value) => setFormData(prev => ({ 
                 ...prev, 

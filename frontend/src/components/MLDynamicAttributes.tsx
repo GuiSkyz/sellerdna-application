@@ -19,8 +19,94 @@ interface MLDynamicAttributesProps {
   categoryId: string;
   categoryName: string;
   attributesData: Record<string, unknown>;
+  productData?: {
+    name?: string;
+    brand?: string;
+    sizeMl?: string;
+    gender?: string;
+    perfumeType?: string;
+    gtin?: string;
+    sku?: string;
+    weight?: string | number;
+    line?: string;
+    model?: string;
+    [key: string]: unknown;
+  };
   onCategorySelected: (categoryId: string, categoryName: string) => void;
   onAttributeChange: (key: string, value: string) => void;
+}
+
+function getAutoFilledValue(attr: MLAttribute, productData?: Record<string, unknown>): string {
+  if (!productData) return '';
+
+  const id = attr.id ? attr.id.toUpperCase() : '';
+  const name = attr.name ? attr.name.toLowerCase() : '';
+
+  const str = (val: unknown): string => {
+    if (val === null || val === undefined) return '';
+    return String(val).trim();
+  };
+
+  // Marca / BRAND
+  if (id === 'BRAND' || name === 'marca') {
+    return str(productData.brand);
+  }
+
+  // Nome do perfume / PERFUME_NAME / FRAGRANCE_NAME / LINE / MODEL
+  if (
+    id === 'PERFUME_NAME' ||
+    id === 'FRAGRANCE_NAME' ||
+    id === 'LINE' ||
+    id === 'MODEL' ||
+    name.includes('nome do perfume') ||
+    name.includes('nome da fragrância') ||
+    name === 'linha' ||
+    name === 'modelo'
+  ) {
+    if (id === 'LINE' && str(productData.line)) return str(productData.line);
+    if (id === 'MODEL' && str(productData.model)) return str(productData.model);
+    return str(productData.name);
+  }
+
+  // Volume / UNIT_VOLUME
+  if (
+    id === 'UNIT_VOLUME' ||
+    id === 'VOLUME' ||
+    name.includes('volume da unidade') ||
+    name === 'volume'
+  ) {
+    const rawSize = str(productData.sizeMl);
+    if (!rawSize) return '';
+    const match = rawSize.match(/^([\d,.]+)\s*([a-zA-Z]+)?$/);
+    if (match) {
+      const numVal = match[1];
+      const unitVal = match[2] ? match[2] : 'mL';
+      return `${numVal} ${unitVal}`;
+    }
+    return rawSize;
+  }
+
+  // Gênero / GENDER
+  if (id === 'GENDER' || name === 'gênero') {
+    return str(productData.gender);
+  }
+
+  // Tipo de perfume / PERFUME_TYPE
+  if (id === 'PERFUME_TYPE' || name.includes('tipo de perfume')) {
+    return str(productData.perfumeType);
+  }
+
+  // GTIN
+  if (id === 'GTIN' || name.includes('código universal')) {
+    return str(productData.gtin);
+  }
+
+  // SKU
+  if (id === 'SELLER_SKU' || name.includes('sku')) {
+    return str(productData.sku);
+  }
+
+  return '';
 }
 
 export function MLDynamicAttributes({
@@ -28,6 +114,7 @@ export function MLDynamicAttributes({
   categoryId,
   categoryName,
   attributesData,
+  productData,
   onCategorySelected,
   onAttributeChange
 }: MLDynamicAttributesProps) {
@@ -93,6 +180,27 @@ export function MLDynamicAttributes({
     }
   }, [categoryId, attributesList.length, loadAttributes]);
 
+  React.useEffect(() => {
+    if (!productData || attributesList.length === 0) return;
+
+    attributesList.forEach(attr => {
+      const existingVal = attributesData[attr.id];
+      const autoVal = getAutoFilledValue(attr, productData);
+      if ((!existingVal || String(existingVal).trim() === '') && autoVal && String(autoVal).trim() !== '') {
+        onAttributeChange(attr.id, autoVal);
+      }
+    });
+  }, [
+    attributesList,
+    productData?.brand,
+    productData?.name,
+    productData?.sizeMl,
+    productData?.gender,
+    productData?.perfumeType,
+    productData?.gtin,
+    productData?.sku
+  ]);
+
   return (
     <div className="space-y-4">
       {error && (
@@ -136,13 +244,23 @@ export function MLDynamicAttributes({
             {attributesList.map(attr => {
               const isRequired = attr.tags?.required || attr.tags?.catalog_required;
               const options = attr.values || attr.values_list || [];
-              const currentValue = String(attributesData[attr.id] || '');
+              const autoVal = getAutoFilledValue(attr, productData);
+              const storedVal = attributesData[attr.id];
+              const currentValue = String(
+                (storedVal !== undefined && storedVal !== '') ? storedVal : (autoVal || '')
+              );
+              const isAutoFilled = Boolean(autoVal && (!storedVal || String(storedVal).trim() === autoVal));
               
               return (
                 <div key={attr.id} className="space-y-2 p-3.5 rounded-lg border border-border/60 bg-background/50">
                   <label className="text-sm font-medium text-foreground flex items-center justify-between">
-                    <span>
+                    <span className="flex items-center gap-2">
                       {attr.name} {isRequired && <span className="text-red-500">*</span>}
+                      {isAutoFilled && (
+                        <span title="Preenchido automaticamente com base nas informações do produto" className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                          Preenchido autom.
+                        </span>
+                      )}
                     </span>
                     {isRequired && (
                       <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-red-500/10 text-red-500">
