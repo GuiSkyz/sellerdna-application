@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2, Download } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import { ActionSummaryDialog, ActionSummaryItem } from '@/components/features/ActionSummaryDialog';
+import { exportProductsToExcel } from '@/utils/exportProductsToExcel';
 
 interface Product {
   id: string;
@@ -17,7 +18,20 @@ interface Product {
   sku: string;
   customId?: string;
   ncm?: string;
+  mlCategoryId?: string;
+  gtin?: string;
+  condition?: string;
+  listingTypeId?: string;
+  warrantyType?: string;
+  warrantyTime?: string;
+  perfumeType?: string;
+  sizeMl?: string;
+  gender?: string;
+  expirationDate?: string;
+  weight?: number;
+  shippingMode?: string;
   mlListingsCount?: number;
+  [key: string]: unknown;
 }
 
 interface BulkPublishResult {
@@ -157,15 +171,27 @@ export default function ProductsPage() {
 
         const mappedData = data.map(d => ({
           id: d.id,
-          name: d.name,
-          productType: d.product_type,
-          brand: d.brand,
-          price: Number(d.price),
-          quantity: Number(d.quantity),
-          imageUrl: getPrimaryImageUrl(d.image_url, d.image_urls),
-          sku: d.sku,
-          customId: d.custom_id,
-          ncm: d.ncm,
+          name: d.name || '',
+          productType: d.product_type || 'Perfume',
+          brand: d.brand || '',
+          price: Number(d.price || 0),
+          quantity: Number(d.quantity || 0),
+          imageUrl: getPrimaryImageUrl(d.image_url, d.image_urls) || '',
+          sku: d.sku || '',
+          customId: d.custom_id || '',
+          ncm: d.ncm || '',
+          mlCategoryId: d.ml_category_id || '',
+          gtin: d.gtin || '',
+          condition: d.condition || 'new',
+          listingTypeId: d.listing_type_id || 'gold_special',
+          warrantyType: d.warranty_type || 'Garantia do vendedor',
+          warrantyTime: d.warranty_time || '30 dias',
+          perfumeType: d.perfume_type || '',
+          sizeMl: d.size_ml || '',
+          gender: d.gender || '',
+          expirationDate: d.expiration_date || '',
+          weight: Number(d.weight || 0),
+          shippingMode: d.shipping_mode || '',
         }));
         
         setProducts(mappedData);
@@ -204,6 +230,24 @@ export default function ProductsPage() {
     } else {
       setSelectedIds([...selectedIds, id]);
     }
+  };
+
+  const handleExportExcel = () => {
+    const productsToExport = selectedIds.length > 0
+      ? products.filter(p => selectedIds.includes(p.id))
+      : products;
+
+    if (productsToExport.length === 0) {
+      alert('Nenhum produto disponível para exportar.');
+      return;
+    }
+
+    exportProductsToExcel(
+      productsToExport,
+      selectedIds.length > 0
+        ? `produtos_selecionados_${selectedIds.length}.xlsx`
+        : 'planilha_produtos_cadastrados.xlsx'
+    );
   };
 
   const handleDelete = async (id: string) => {
@@ -603,6 +647,13 @@ export default function ProductsPage() {
             <Package className="w-4 h-4" />
             Novo Produto
           </Link>
+          <button 
+            onClick={handleExportExcel}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            {selectedIds.length > 0 ? `Exportar (${selectedIds.length})` : 'Exportar Planilha'}
+          </button>
           <Link 
             href="/products/import"
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"

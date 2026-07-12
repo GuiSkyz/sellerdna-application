@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 export const ImportProductSchema = z.object({
+  id: z.string().optional(),
+  customId: z.string().optional(),
   name: z.string().min(1, "O nome do produto é obrigatório"),
   productType: z.string().optional().default('Perfume'),
   brand: z.string().optional(),
@@ -13,12 +15,20 @@ export const ImportProductSchema = z.object({
   weight: z.coerce.number().optional(),
   ncm: z.string().optional(),
   sku: z.string().optional(),
-  imageUrl: z.string().url("A URL da imagem deve ser válida").optional().or(z.literal('')),
+  imageUrl: z.string().optional(),
+  mlCategoryId: z.string().optional(),
+  gtin: z.string().optional(),
+  condition: z.string().optional(),
+  listingTypeId: z.string().optional(),
+  warrantyType: z.string().optional(),
+  warrantyTime: z.string().optional(),
 });
 
 export const ImportProductsPayloadSchema = z.object({
-  products: z.array(ImportProductSchema)
+  products: z.array(ImportProductSchema),
+  mode: z.enum(['create', 'update', 'upsert']).optional().default('upsert'),
 });
 
 export type ImportProductDTO = z.infer<typeof ImportProductSchema>;
 export type ImportProductsPayloadDTO = z.infer<typeof ImportProductsPayloadSchema>;
+

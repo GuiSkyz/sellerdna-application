@@ -40,21 +40,37 @@ export function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
         
         const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' });
         
-        const mappedData = jsonData.map((row: Record<string, unknown>) => ({
-          customId: String(row['ID'] || row['Id'] || row['id'] || ''),
-          name: row['NOME'] || row['Nome'] || '',
-          brand: row['MARCA'] || row['Marca'] || '',
-          sizeMl: row['TAMANHO (ML)'] || row['Tamanho (ML)'] || '',
-          perfumeType: row['TIPO DE PERFUME'] || row['Tipo de Perfume'] || '',
-          price: Number(row['PREÇO DE VENDA (R$)'] || row['PREÇO DE VENDA'] || row['Preço'] || 0),
-          quantity: Number(row['QUANTIDADE'] || row['Quantidade'] || 0),
-          gender: row['GENÊRO'] || row['GÊNERO'] || row['Gênero'] || '',
-          expirationDate: row['VALIDADE'] || row['Validade'] || '',
-          weight: Number(row['PESO'] || row['Peso'] || 0),
-          ncm: row['NCM'] || '',
-          sku: row['SKU'] || '',
-          imageUrl: row['FOTO (Link da Pasta Drive)'] || row['FOTO'] || row['Foto'] || ''
-        })).filter(item => item.name !== '');
+        const mappedData = jsonData.map((row: Record<string, unknown>) => {
+          const sysId = String(row['ID do Sistema'] || row['ID Sistema'] || row['ID DO SISTEMA'] || row['ID_SISTEMA'] || row['id'] || '');
+          const custId = String(row['ID Personalizado'] || row['ID PERSONALIZADO'] || row['CUST ID'] || row['customId'] || row['ID'] || row['Id'] || '');
+          const isSysIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(custId);
+          const finalId = sysId || (isSysIdUuid ? custId : '');
+          const finalCustomId = !isSysIdUuid ? custId : '';
+
+          return {
+            id: finalId,
+            customId: finalCustomId,
+            name: String(row['Nome'] || row['NOME'] || row['Produto'] || row['name'] || (finalId || String(row['SKU'] || '') ? 'Produto (Atualização)' : '')),
+            sku: String(row['SKU'] || row['sku'] || ''),
+            mlCategoryId: String(row['Categoria ML'] || row['CATEGORIA ML'] || row['CATEGORIA'] || row['Categoria'] || row['mlCategoryId'] || ''),
+            price: Number(row['Preço (R$)'] || row['PREÇO (R$)'] || row['Preço'] || row['PREÇO DE VENDA (R$)'] || row['PREÇO DE VENDA'] || row['price'] || 0),
+            quantity: Number(row['Estoque'] || row['ESTOQUE'] || row['Quantidade'] || row['QUANTIDADE'] || row['quantity'] || 0),
+            brand: String(row['Marca'] || row['MARCA'] || row['brand'] || ''),
+            gtin: String(row['GTIN/EAN'] || row['GTIN'] || row['EAN'] || row['gtin'] || ''),
+            ncm: String(row['NCM'] || row['ncm'] || ''),
+            productType: String(row['Tipo de Produto'] || row['TIPO DE PRODUTO'] || row['productType'] || 'Perfume'),
+            perfumeType: String(row['Tipo de Perfume'] || row['TIPO DE PERFUME'] || row['perfumeType'] || ''),
+            sizeMl: String(row['Tamanho (ML)'] || row['TAMANHO (ML)'] || row['sizeMl'] || ''),
+            gender: String(row['Gênero'] || row['GÊNERO'] || row['GENÊRO'] || row['gender'] || ''),
+            condition: String(row['Condição'] || row['CONDIÇÃO'] || row['condition'] || 'new'),
+            listingTypeId: String(row['Tipo de Anúncio ML'] || row['TIPO DE ANÚNCIO ML'] || row['listingTypeId'] || 'gold_special'),
+            warrantyType: String(row['Tipo de Garantia'] || row['TIPO DE GARANTIA'] || row['warrantyType'] || 'Garantia do vendedor'),
+            warrantyTime: String(row['Tempo de Garantia'] || row['TEMPO DE GARANTIA'] || row['warrantyTime'] || '30 dias'),
+            expirationDate: String(row['Validade'] || row['VALIDADE'] || row['expirationDate'] || ''),
+            weight: Number(row['Peso (g)'] || row['PESO (G)'] || row['Peso'] || row['PESO'] || row['weight'] || 0),
+            imageUrl: String(row['Foto URL'] || row['FOTO URL'] || row['Foto'] || row['FOTO (Link da Pasta Drive)'] || row['FOTO'] || row['imageUrl'] || '')
+          };
+        }).filter(item => Boolean(item.name || item.id || item.sku));
 
         if (mappedData.length === 0) {
           setError('Nenhum dado válido encontrado. Verifique as colunas da planilha.');

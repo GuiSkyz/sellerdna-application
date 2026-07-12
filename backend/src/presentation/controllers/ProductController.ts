@@ -44,11 +44,20 @@ export class ProductController {
         });
       }
 
-      const products = await this.importProductsUseCase.execute(userId, parsed.data.products);
+      const result = await this.importProductsUseCase.execute(userId, parsed.data.products, parsed.data.mode);
 
-      return reply.status(201).send({
-        message: `${products.length} produtos importados com sucesso!`,
-        products
+      const msgParts = [];
+      if (result.updatedCount > 0) msgParts.push(`${result.updatedCount} atualizado(s)`);
+      if (result.createdCount > 0) msgParts.push(`${result.createdCount} criado(s)`);
+      const message = msgParts.length > 0
+        ? `${msgParts.join(' e ')} com sucesso!`
+        : 'Processamento de importação concluído!';
+
+      return reply.status(200).send({
+        message,
+        updatedCount: result.updatedCount,
+        createdCount: result.createdCount,
+        products: result.products
       });
     } catch (error) {
       request.log.error(error);

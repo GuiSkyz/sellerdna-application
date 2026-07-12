@@ -85,11 +85,17 @@ export class SupabaseProductRepository {
     }
   }
 
-  async listAll(): Promise<Product[]> {
-    const { data, error } = await supabase
+  async listAll(userId?: string): Promise<Product[]> {
+    let query = supabase
       .from('products')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Erro ao listar produtos do Supabase:', error);
@@ -187,6 +193,8 @@ export class SupabaseProductRepository {
     if (updateData.warrantyTime !== undefined) mapToSnakeCase.warranty_time = updateData.warrantyTime;
     if (updateData.mlCategoryId !== undefined) mapToSnakeCase.ml_category_id = updateData.mlCategoryId;
     if (updateData.mlAttributes !== undefined) mapToSnakeCase.ml_attributes = updateData.mlAttributes;
+    if (updateData.customId !== undefined) mapToSnakeCase.custom_id = updateData.customId;
+    if (updateData.shippingMode !== undefined) mapToSnakeCase.shipping_mode = updateData.shippingMode;
 
     const { data, error } = await supabase
       .from('products')
