@@ -7,6 +7,7 @@ import { mlRoutes } from './presentation/routes/mlRoutes';
 import { listingRoutes } from './presentation/routes/listingRoutes';
 import { dashboardRoutes } from './presentation/routes/dashboardRoutes';
 import { gdriveRoutes } from './presentation/routes/gdriveRoutes';
+import { agentRoutes } from './presentation/routes/agentRoutes';
 
 export async function buildApp() {
   const app = Fastify({
@@ -36,8 +37,8 @@ export async function buildApp() {
   await app.register(mlRoutes, { prefix: '/api/ml' });
   await app.register(listingRoutes, { prefix: '/api/listings' });
   await app.register(dashboardRoutes, { prefix: '/api/dashboard' });
-  
   await app.register(gdriveRoutes, { prefix: '/api/gdrive' });
+  await app.register(agentRoutes, { prefix: '/api/agent' });
 
   return app;
 }

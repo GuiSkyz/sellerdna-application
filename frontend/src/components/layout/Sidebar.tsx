@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, PackageSearch, UploadCloud, Settings, Box, Store } from 'lucide-react';
+import { LayoutDashboard, PackageSearch, UploadCloud, Settings, Box, Store, Bot, Sparkles } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Agente AI', href: '/ai-agent', icon: Bot, isAi: true },
     { name: 'Meus Produtos', href: '/products', icon: PackageSearch },
     { name: 'Importar', href: '/products/import', icon: UploadCloud },
     { name: 'Anúncios ML', href: '/listings', icon: Store },
@@ -68,11 +69,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
                   <div className="absolute inset-0 bg-muted/0 group-hover:bg-muted/50 transition-colors duration-300"></div>
                 )}
                 
-                <Icon className={`w-5 h-5 flex-shrink-0 relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                <span className={`text-sm font-medium whitespace-nowrap relative z-10 transition-all duration-300 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 hidden'}`}>
+                <Icon className={`w-5 h-5 flex-shrink-0 relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'} ${item.isAi ? 'text-purple-500 animate-pulse' : ''}`} />
+                <span className={`text-sm font-medium whitespace-nowrap relative z-10 transition-all duration-300 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 hidden'} ${item.isAi ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 bg-clip-text text-transparent font-bold' : ''}`}>
                   {item.name}
                 </span>
-                {isActive && isOpen && (
+                {item.isAi && isOpen && (
+                  <span className="ml-auto px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 relative z-10">
+                    24/7
+                  </span>
+                )}
+                {!item.isAi && isActive && isOpen && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--primary)] relative z-10 animate-pulse"></div>
                 )}
               </Link>
