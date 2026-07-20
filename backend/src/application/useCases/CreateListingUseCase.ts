@@ -98,7 +98,7 @@ export class CreateListingUseCase {
       return url;
     };
 
-    // 5. Transform Product to ML Item Format (imagens)
+    // 5. Transform Product to ML Item Format (imagens - máximo de 10 fotos permitido por categorias do ML)
     let mlPictures: { source: string }[] = [];
     if (product.imageUrls && product.imageUrls.length > 0) {
       mlPictures = product.imageUrls.map(url => ({ source: formatImageUrl(url) }));
@@ -108,6 +108,9 @@ export class CreateListingUseCase {
 
     if (mlPictures.length === 0) {
       throw new Error('O produto precisa ter pelo menos 1 imagem cadastrada para ser publicado no Mercado Livre.');
+    }
+    if (mlPictures.length > 10) {
+      mlPictures = mlPictures.slice(0, 10);
     }
 
     // 6. Montar o payload correto com base no modelo da categoria
@@ -413,14 +416,20 @@ export class CreateListingUseCase {
     }
 
     // 3. Preenchimento automático inteligente para EMPTY_GTIN_REASON e atributos obrigatórios
-    const hasGtin = normalizedAttributes.some(a => a.id === 'GTIN' && a.value_name && String(a.value_name).trim() !== '');
+    const hasGtin = normalizedAttributes.some(a => a.id === 'GTIN' && (a.value_name || a.value_id) && String(a.value_name || a.value_id).trim() !== '');
     if (!hasGtin && attrLookup.has('EMPTY_GTIN_REASON') && !normalizedAttributes.some(a => a.id === 'EMPTY_GTIN_REASON')) {
       const gtinReasonAttr = attrLookup.get('EMPTY_GTIN_REASON');
       if (gtinReasonAttr?.values && gtinReasonAttr.values.length > 0) {
+        const bestReason = gtinReasonAttr.values.find((v: any) =>
+          v.id === '17055160' ||
+          v.name.toLowerCase().includes('não tem código') ||
+          v.id === '17055161' ||
+          v.name.toLowerCase().includes('outro')
+        ) || gtinReasonAttr.values[0];
         normalizedAttributes.push({
           id: 'EMPTY_GTIN_REASON',
-          value_id: gtinReasonAttr.values[0].id,
-          value_name: gtinReasonAttr.values[0].name
+          value_id: bestReason.id,
+          value_name: bestReason.name
         });
       } else {
         normalizedAttributes.push({ id: 'EMPTY_GTIN_REASON', value_name: 'O produto não tem código cadastrado' });
@@ -436,7 +445,12 @@ export class CreateListingUseCase {
       }
     }
 
-    return normalizedAttributes;
+    // 4. Desduplicar atributos por ID para evitar erros de validação no Mercado Livre
+    const uniqueMap = new Map<string, any>();
+    for (const attr of normalizedAttributes) {
+      uniqueMap.set(attr.id, attr);
+    }
+    return Array.from(uniqueMap.values());
   }
 
   /**

@@ -1,6 +1,10 @@
 import { supabase } from '../../infrastructure/database/supabase';
 import { GeminiService } from '../../infrastructure/integrations/gemini/GeminiService';
 import { randomUUID } from 'crypto';
+import { CreateListingUseCase } from './CreateListingUseCase';
+import { MercadoLivreApiService } from '../../infrastructure/integrations/mercadolivre/MercadoLivreApiService';
+import { SupabaseProductRepository } from '../../domain/repositories/SupabaseProductRepository';
+import { getValidMLToken } from '../../infrastructure/integrations/mercadolivre/tokenHelper';
 
 export class AgentUseCases {
   private geminiService = new GeminiService();
@@ -165,49 +169,43 @@ export class AgentUseCases {
         await new Promise(r => setTimeout(r, 1500));
         const desc = await this.geminiService.generateDescription(prod);
 
-        // Monta imagens para o anúncio
-        const mlPictures: { source: string }[] = [];
-        if (Array.isArray(prod.image_urls) && prod.image_urls.length > 0) {
-          mlPictures.push(...prod.image_urls.map((u: any) => ({ source: typeof u === 'string' ? u : u.source || u.url })));
-        } else if (typeof prod.image_url === 'string' && prod.image_url.trim() !== '') {
-          mlPictures.push({ source: prod.image_url });
-        } else if (Array.isArray(prod.images) && prod.images.length > 0) {
-          mlPictures.push(...prod.images.map((u: any) => ({ source: typeof u === 'string' ? u : u.url || u.source })));
+        let accountToken = null;
+        try {
+          if (accountId) {
+            accountToken = await getValidMLToken(accountId);
+          }
+        } catch {}
+
+        if (!accountToken) {
+          failedProducts.push({ product_name: prod.name, error: 'Conta do Mercado Livre não conectada ou token expirado para publicação real.' });
+          continue;
         }
 
-        const listingId = randomUUID();
-        const listingPayload = {
-          id: listingId,
-          account_id: accountId,
-          product_id: prod.id,
-          ml_item_id: `ML_AI_${Date.now()}_${createdCount + 1}`,
+        const createListingUseCase = new CreateListingUseCase(
+          new MercadoLivreApiService(),
+          new SupabaseProductRepository()
+        );
+
+        const newListing = await createListingUseCase.execute({
+          userId,
+          productId: prod.id,
+          accountId,
+          accountToken,
           title: title.substring(0, 60),
+          description: desc,
           price: Number(prod.price) || 99.90,
-          available_quantity: Number(prod.quantity) || 10,
-          status: 'draft',
-          permalink: `https://produto.mercadolivre.com.br/MLB-AI-${createdCount + 1}`,
-          pictures: mlPictures,
-          attributes: [
-            { id: 'BRAND', value_name: prod.brand || 'Original' },
-            { id: 'VOLUME', value_name: prod.size_ml || '100ml' }
-          ],
-          created_at: new Date().toISOString()
-        };
+          quantity: Number(prod.quantity) || 10,
+          categoryId: prod.ml_category_id || (prod as any).mlCategoryId
+        });
 
-        const { error: insErr } = await supabase.from('listings').insert(listingPayload);
-        if (insErr) {
-          console.error(`[AgentUseCases] Erro ao salvar anúncio no banco para o produto ${prod.id}:`, insErr);
-          failedProducts.push({ product_name: prod.name, error: insErr.message || 'Erro ao inserir na tabela listings' });
-        } else {
-          await supabase.from('ai_generations').insert({
-            listing_id: listingId,
-            prompt_type: 'WEEKLY_AUTOMATION_SEO',
-            generated_content: `TÍTULO: ${title}\n\nDESCRIÇÃO:\n${desc}`,
-            created_at: new Date().toISOString()
-          });
-          createdCount++;
-          createdProducts.push({ product_name: prod.name, title: title.substring(0, 60), status: 'Criado (Rascunho)' });
-        }
+        await supabase.from('ai_generations').insert({
+          listing_id: newListing.id,
+          prompt_type: 'WEEKLY_AUTOMATION_SEO',
+          generated_content: `TÍTULO: ${title}\n\nDESCRIÇÃO:\n${desc}`,
+          created_at: new Date().toISOString()
+        });
+        createdCount++;
+        createdProducts.push({ product_name: prod.name, title: title.substring(0, 60), status: newListing.status || 'Publicado no Mercado Livre' });
 
         await new Promise(r => setTimeout(r, 3500));
       } catch (error: any) {
@@ -294,5 +292,34 @@ export class AgentUseCases {
     });
 
     return { success: true, report };
+  }
+
+  async internalPublishListing(payload: { userId: string; productId: string; accountId: string; title: string; description: string; price: number; quantity: number; categoryId?: string }) {
+    const { userId, productId, accountId, title, description, price, quantity, categoryId } = payload;
+    let accountToken = null;
+    try {
+      accountToken = await getValidMLToken(accountId);
+    } catch (e: any) {
+      throw new Error(`Token do Mercado Livre inválido ou conta não conectada: ${e.message}`);
+    }
+
+    const createListingUseCase = new CreateListingUseCase(
+      new MercadoLivreApiService(),
+      new SupabaseProductRepository()
+    );
+
+    const newListing = await createListingUseCase.execute({
+      userId,
+      productId,
+      accountId,
+      accountToken,
+      title: title.substring(0, 60),
+      description,
+      price: Number(price) || 99.90,
+      quantity: Number(quantity) || 10,
+      categoryId
+    });
+
+    return { success: true, listing: newListing };
   }
 }

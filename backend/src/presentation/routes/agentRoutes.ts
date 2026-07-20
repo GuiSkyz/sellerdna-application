@@ -5,6 +5,9 @@ import { authMiddleware } from '../middlewares/authMiddleware';
 export async function agentRoutes(app: FastifyInstance) {
   const controller = new AgentController();
 
+  // Internal endpoint for Python microservice to publish directly via Node CreateListingUseCase
+  app.post('/internal-publish', controller.internalPublishListing.bind(controller));
+
   app.addHook('preHandler', authMiddleware);
 
   app.get('/overview', controller.getOverview.bind(controller));

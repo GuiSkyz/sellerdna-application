@@ -242,51 +242,44 @@ class AgentOperatorService:
                         persuasive_desc = await gemini_ai_service.generate_persuasive_description(prod)
                         
                         # Monta imagens no formato aceito pelo sistema
-                        ml_pictures = []
-                        if isinstance(prod.get("image_urls"), list) and len(prod["image_urls"]) > 0:
-                            ml_pictures = [{"source": u} for u in prod["image_urls"]]
-                        elif isinstance(prod.get("image_url"), str) and len(prod["image_url"].strip()) > 0:
-                            ml_pictures = [{"source": prod["image_url"]}]
-                        elif isinstance(prod.get("images"), list) and len(prod["images"]) > 0:
-                            ml_pictures = [{"source": u if isinstance(u, str) else u.get("url") or u.get("source")} for u in prod["images"]]
-
-                        listing_id = str(uuid.uuid4())
-                        new_listing_payload = {
-                            "id": listing_id,
-                            "account_id": account_id,
-                            "product_id": prod["id"],
-                            "ml_item_id": f"ML_AI_{int(time.time() * 1000)}_{created_count + 1}",
-                            "title": seo_title[:60],
-                            "price": float(prod.get("price") or 99.90),
-                            "available_quantity": int(prod.get("quantity") or 10),
-                            "status": "active" if auto_mode == "PUBLISH" else "draft",
-                            "permalink": f"https://produto.mercadolivre.com.br/MLB-AI-{created_count + 1}",
-                            "attributes": [
-                                {"id": "BRAND", "value_name": prod.get("brand") or "Original"},
-                                {"id": "VOLUME", "value_name": prod.get("size_ml") or "100ml"}
-                            ],
-                            "pictures": ml_pictures,
-                            "created_at": datetime.now(timezone.utc).isoformat()
-                        }
-                        
-                        ins = self.supabase.table("listings").insert(new_listing_payload).execute()
-                        if ins.data:
-                            created_listings.append(ins.data[0])
-                        
-                        # Salva em ai_generations
-                        self.supabase.table("ai_generations").insert({
-                            "listing_id": listing_id,
-                            "prompt_type": "WEEKLY_AUTOMATION_SEO",
-                            "generated_content": f"TÍTULO: {seo_title}\n\nDESCRIÇÃO:\n{persuasive_desc}",
-                            "created_at": datetime.now(timezone.utc).isoformat()
-                        }).execute()
-
-                        created_count += 1
-                        created_products.append({
-                            "product_name": prod.get("name"),
-                            "title": seo_title[:60],
-                            "status": "Criado (Rascunho)"
-                        })
+                        import httpx
+                        node_url = settings.BACKEND_NODE_URL.rstrip("/")
+                        resp = httpx.post(
+                            f"{node_url}/api/internal-publish",
+                            json={
+                                "userId": user_id,
+                                "productId": prod["id"],
+                                "accountId": account_id,
+                                "title": seo_title[:60],
+                                "description": persuasive_desc,
+                                "price": float(prod.get("price") or 99.90),
+                                "quantity": int(prod.get("quantity") or 10),
+                                "categoryId": prod.get("ml_category_id")
+                            },
+                            timeout=45.0
+                        )
+                        res_data = resp.json()
+                        if resp.status_code in (200, 201) and res_data.get("success", True):
+                            created_count += 1
+                            listing_info = res_data.get("listing", {})
+                            if listing_info.get("id"):
+                                self.supabase.table("ai_generations").insert({
+                                    "listing_id": listing_info.get("id"),
+                                    "prompt_type": "WEEKLY_AUTOMATION_SEO",
+                                    "generated_content": f"TÍTULO: {seo_title}\n\nDESCRIÇÃO:\n{persuasive_desc}",
+                                    "created_at": datetime.now(timezone.utc).isoformat()
+                                }).execute()
+                            created_products.append({
+                                "product_name": prod.get("name"),
+                                "title": seo_title[:60],
+                                "status": listing_info.get("status", "Publicado no Mercado Livre")
+                            })
+                        else:
+                            err_msg = res_data.get("error", f"Erro HTTP {resp.status_code}")
+                            failed_count += 1
+                            logger.warning(f"[AgentOperator] Falha ao publicar {prod['id']} no ML via Node: {err_msg}")
+                            failed_products.append({"product_name": prod.get("name"), "error": err_msg})
+                            continue
                     except Exception as item_err:
                         failed_count += 1
                         logger.warning(f"[AgentOperator] Falha no produto {prod.get('name')}: {str(item_err)}")

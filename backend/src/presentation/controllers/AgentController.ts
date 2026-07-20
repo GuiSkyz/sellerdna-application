@@ -85,4 +85,18 @@ export class AgentController {
       return reply.status(500).send({ error: 'Erro ao gerar auditoria do Agente' });
     }
   }
+
+  async internalPublishListing(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const payload = request.body as any;
+      if (!payload?.userId || !payload?.productId || !payload?.accountId) {
+        return reply.status(400).send({ success: false, error: 'Parâmetros obrigatórios ausentes: userId, productId, accountId' });
+      }
+      const result = await this.useCases.internalPublishListing(payload);
+      return reply.send(result);
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(400).send({ success: false, error: error?.message || 'Erro ao publicar no Mercado Livre' });
+    }
+  }
 }
