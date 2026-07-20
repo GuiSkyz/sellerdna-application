@@ -80,7 +80,10 @@ export class AgentUseCases {
 
   async listReports(userId: string, limit = 20) {
     const { data, error } = await supabase.from('ai_agent_reports').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit);
-    if (error) throw error;
+    if (error) {
+      console.warn('[AgentUseCases] Aviso ao consultar ai_agent_reports (a tabela pode não ter sido criada no Supabase ainda):', error.message || error);
+      return [];
+    }
     return data || [];
   }
 
@@ -94,7 +97,10 @@ export class AgentUseCases {
 
   async listActions(userId: string, limit = 30) {
     const { data, error } = await supabase.from('ai_agent_actions').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit);
-    if (error) throw error;
+    if (error) {
+      console.warn('[AgentUseCases] Aviso ao consultar ai_agent_actions (a tabela pode não ter sido criada no Supabase ainda):', error.message || error);
+      return [];
+    }
     return data || [];
   }
 
