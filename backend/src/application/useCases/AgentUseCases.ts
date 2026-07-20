@@ -127,9 +127,15 @@ export class AgentUseCases {
     for (const prod of (products || [])) {
       try {
         const title = await this.geminiService.generateOptimizedTitle(prod.name, prod.brand, prod.size_ml, prod.perfume_type);
+        // Pausa curta entre título e descrição para cadenciar requisições (anti-rate limit)
+        await new Promise(r => setTimeout(r, 1500));
         const desc = await this.geminiService.generateDescription(prod);
         createdCount++;
-      } catch {
+        // Pausa de 3.5s após cada produto processado no lote para respeitar 15 RPM do Free Tier
+        await new Promise(r => setTimeout(r, 3500));
+      } catch (error: any) {
+        console.warn(`[AgentUseCases] Falha na criação para o produto ${prod.id}:`, error?.message || error);
+        await new Promise(r => setTimeout(r, 3000));
         continue;
       }
     }

@@ -1,42 +1,107 @@
 import { GoogleGenAI } from '@google/genai';
 
 export class GeminiService {
-  private ai: GoogleGenAI;
-  // Modelos reais do Google Gemini
+  private apiKeys: string[] = [];
+  private currentKeyIndex = 0;
   private fallbackModels = [
+    'gemini-3.1-flash-lite',
     'gemini-2.5-flash',
     'gemini-2.5-pro',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro'
+    'gemini-1.5-flash'
   ];
 
   constructor() {
-    this.ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || 'AIzaSyA_PLACEHOLDER_NOT_REAL', // Evita crash no construtor
-    });
+    const keysEnv = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || 'AIzaSyA_PLACEHOLDER_NOT_REAL';
+    this.apiKeys = keysEnv.split(',').map(k => k.trim()).filter(Boolean);
+    if (this.apiKeys.length === 0) {
+      this.apiKeys = ['AIzaSyA_PLACEHOLDER_NOT_REAL'];
+    }
+  }
+
+  private getClient(): GoogleGenAI {
+    const key = this.apiKeys[this.currentKeyIndex % this.apiKeys.length];
+    return new GoogleGenAI({ apiKey: key });
+  }
+
+  private rotateKey() {
+    if (this.apiKeys.length > 1) {
+      this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+      console.warn(`[Gemini] Rotacionando para a chave de API #${this.currentKeyIndex + 1} de ${this.apiKeys.length}`);
+    }
   }
 
   private async executeWithFallback(prompt: string, temperature: number): Promise<string | null> {
     let lastError: any = null;
-    for (const model of this.fallbackModels) {
-      try {
-        const response = await this.ai.models.generateContent({
-          model: model,
-          contents: prompt,
-          config: {
-            temperature: temperature,
+
+    // 1º LINHA DE DEFESA E TURBO: Tenta via Groq (llama-3.3-70b-versatile / llama-3.1-8b-instant) se a chave estiver configurada
+    const groqKey = process.env.GROQ_API_KEY;
+    if (groqKey && groqKey !== 'AIzaSyA_PLACEHOLDER_NOT_REAL') {
+      const groqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+      for (const groqModel of groqModels) {
+        try {
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify({
+              model: groqModel,
+              messages: [{ role: 'user', content: prompt }],
+              temperature: temperature,
+              max_tokens: 1500
+            })
+          });
+          if (res.ok) {
+            const data: any = await res.json();
+            const text = data.choices?.[0]?.message?.content;
+            if (text) {
+              return text.trim();
+            }
+          } else {
+            const errText = await res.text();
+            console.warn(`[AI Engine] Groq (${groqModel}) retornou status ${res.status}: ${errText.substring(0, 100)}. Tentando próximo...`);
           }
-        });
-        
-        if (response.text) {
-          return response.text.trim();
+        } catch (groqErr: any) {
+          console.warn(`[AI Engine] Falha na conexão com Groq (${groqModel}):`, groqErr?.message || groqErr);
         }
-      } catch (error: any) {
-        lastError = error;
-        console.warn(`[Gemini] Falha ao gerar com o modelo ${model}. Tentando o próximo...`, error instanceof Error ? error.message : '');
       }
     }
-    throw new Error(`Falha em todos os modelos da IA: ${lastError?.message || 'Erro desconhecido'}`);
+
+    // 2º LINHA DE DEFESA / FALLBACK: Google Gemini com Rotação de Chaves e Cadenciamento
+    for (let retry = 0; retry < 2; retry++) {
+      for (const model of this.fallbackModels) {
+        try {
+          const ai = this.getClient();
+          const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+            config: {
+              temperature: temperature,
+            }
+          });
+          
+          if (response.text) {
+            return response.text.trim();
+          }
+        } catch (error: any) {
+          lastError = error;
+          const status = error?.status || error?.code;
+          const message = error instanceof Error ? error.message : JSON.stringify(error);
+          
+          // Se for erro de Cota/Rate Limit (429) ou Exaustão
+          if (status === 429 || status === 'RESOURCE_EXHAUSTED' || message.includes('429') || message.includes('Quota exceeded')) {
+            console.warn(`[Gemini] Cota excedida no modelo ${model}. Rotacionando chave ou aplicando pausa anti-rate limit...`);
+            this.rotateKey();
+            // Pausa de 3.5s antes de tentar outro modelo/retry para aliviar a janela RPM
+            await new Promise(r => setTimeout(r, 3500));
+          } else {
+            console.warn(`[Gemini] Falha no modelo ${model}:`, message);
+          }
+        }
+      }
+    }
+    throw new Error(`Falha em todos os modelos da IA (Groq + Gemini): ${lastError?.message || 'Erro desconhecido'}`);
   }
 
   async generateOptimizedTitle(productName: string, brand?: string, sizeMl?: string, perfumeType?: string): Promise<string> {

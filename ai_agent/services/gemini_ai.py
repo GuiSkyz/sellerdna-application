@@ -6,16 +6,21 @@ from google import genai
 
 from config.settings import settings
 
+import asyncio
+import urllib.request
+import urllib.error
+
 logger = logging.getLogger("GeminiAI")
 
 class GeminiAIService:
     """
-    Serviço de Inteligência Artificial em Python para o Agente Operacional SELLER DNA.
+    Serviço de Inteligência Artificial Híbrido (Groq + Gemini) em Python para o Agente Operacional SELLER DNA.
     Gera títulos SEO (<55 caracteres), descrições persuasivas de alta conversão e
     sintetiza relatórios executivos em Markdown.
     """
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
+        self.groq_api_key = os.getenv("GROQ_API_KEY")
         if self.api_key:
             self.client = genai.Client(api_key=self.api_key)
         else:
@@ -23,12 +28,55 @@ class GeminiAIService:
             logger.warning("GEMINI_API_KEY não configurada no serviço Python. Modo de fallback ou mock será ativado quando necessário.")
 
         self.models = [
+            "gemini-3.1-flash-lite",
             "gemini-2.5-flash",
-            "gemini-2.0-flash",
+            "gemini-2.5-pro",
             "gemini-1.5-flash"
         ]
 
+    async def _generate_groq(self, prompt: str, temperature: float = 0.7) -> str:
+        if not self.groq_api_key or self.groq_api_key == "AIzaSyA_PLACEHOLDER_NOT_REAL":
+            return ""
+        
+        groq_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+        for g_model in groq_models:
+            try:
+                payload = json.dumps({
+                    "model": g_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": temperature,
+                    "max_tokens": 1500
+                }).encode("utf-8")
+
+                req = urllib.request.Request(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.groq_api_key}"
+                    },
+                    method="POST"
+                )
+
+                def _fetch():
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        return json.loads(resp.read().decode("utf-8"))
+
+                data = await asyncio.to_thread(_fetch)
+                text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                if text:
+                    return text.strip()
+            except Exception as e:
+                logger.warning(f"[AI Python] Falha na conexão com Groq ({g_model}): {str(e)}")
+        return ""
+
     async def _generate_text(self, prompt: str, temperature: float = 0.7) -> str:
+        # 1º LINHA DE DEFESA E TURBO: Tenta via Groq
+        groq_result = await self._generate_groq(prompt, temperature)
+        if groq_result:
+            return groq_result
+
+        # 2º LINHA DE DEFESA: Google Gemini
         if not self.client:
             return ""
         
@@ -45,9 +93,12 @@ class GeminiAIService:
             except Exception as e:
                 last_err = e
                 logger.warning(f"[Gemini Python] Falha com modelo {model_name}: {str(e)}")
+                # Se for erro de rate limit/429, aguarda 3s antes do próximo
+                if "429" in str(e) or "Quota" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    await asyncio.sleep(3.0)
                 continue
         
-        logger.error(f"[Gemini Python] Falha em todos os modelos: {last_err}")
+        logger.error(f"[Gemini Python] Falha em todos os modelos (Groq + Gemini): {last_err}")
         return ""
 
     async def generate_seo_title(self, product: Dict[str, Any]) -> str:
