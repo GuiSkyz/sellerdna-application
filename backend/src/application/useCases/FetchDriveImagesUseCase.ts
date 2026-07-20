@@ -42,8 +42,8 @@ export class FetchDriveImagesUseCase {
       finalFolderId = match[0];
     }
 
-    // 4. Find the subfolder matching the product name
-    const subfolderId = await this.googleDriveService.findSubfolderByName(finalFolderId, product.name);
+    // 4. Find the subfolder matching the product name using assertive parametrization
+    const subfolderId = await this.googleDriveService.findSubfolderByName(finalFolderId, product.name, product.brand || undefined);
     
     if (!subfolderId) {
       throw new Error(`Não encontrado pasta do produto "${product.name}" no Google Drive.`);
