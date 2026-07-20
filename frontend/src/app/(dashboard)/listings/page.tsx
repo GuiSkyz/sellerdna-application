@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Store, RefreshCw, Search, ExternalLink, Activity, ShoppingCart, Eye, Zap, Link2, Unlink } from 'lucide-react';
+import { Store, RefreshCw, Search, ExternalLink, Activity, ShoppingCart, Eye, Zap, Link2, Unlink, Filter, ArrowUpDown, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
@@ -41,6 +41,12 @@ export default function ListingsPage() {
   const [accounts, setAccounts] = useState<MLAccount[]>([]);
   const [products, setProducts] = useState<Array<{ id: string; name: string; sku?: string; }>>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Filtros avançados e Ordenação
+  const [connectionFilter, setConnectionFilter] = useState<'all' | 'connected' | 'unconnected'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'problem'>('all');
+  const [photoFilter, setPhotoFilter] = useState<'all' | 'with_photo' | 'without_photo'>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'az' | 'za'>('newest');
 
   const [linkingListing, setLinkingListing] = useState<Listing | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
@@ -168,10 +174,39 @@ export default function ListingsPage() {
     }
   };
 
-  const filteredListings = listings.filter(l => 
-    l.title.toLowerCase().includes(search.toLowerCase()) || 
-    l.ml_item_id.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredListings = listings
+    .filter(l => {
+      const matchesSearch = l.title.toLowerCase().includes(search.toLowerCase()) || 
+                            l.ml_item_id.toLowerCase().includes(search.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // Filtro de conexão ao produto
+      const isConnected = Boolean(l.product_id || l.product?.id);
+      if (connectionFilter === 'connected' && !isConnected) return false;
+      if (connectionFilter === 'unconnected' && isConnected) return false;
+
+      // Filtro de status
+      if (statusFilter === 'active' && l.status !== 'active') return false;
+      if (statusFilter === 'paused' && l.status !== 'paused') return false;
+      if (statusFilter === 'problem' && (l.status === 'active' || l.status === 'paused')) return false;
+
+      // Filtro por foto
+      const pictures = (l as any).pictures || [];
+      const hasPhoto = (Array.isArray(pictures) && pictures.length > 0) || Boolean((l as any).thumbnail || l.product?.sku);
+      if (photoFilter === 'with_photo' && !hasPhoto) return false;
+      if (photoFilter === 'without_photo' && hasPhoto) return false;
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'az') return a.title.localeCompare(b.title);
+      if (sortOrder === 'za') return b.title.localeCompare(a.title);
+      // 'newest' (Últimos criados)
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (dateA !== dateB) return dateB - dateA;
+      return 0;
+    });
 
   if (loading) {
     return (
@@ -200,19 +235,91 @@ export default function ListingsPage() {
 
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
         {/* Toolbar */}
-        <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30">
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Buscar por título ou ID..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-all"
-            />
+        {/* Toolbar */}
+        <div className="p-4 border-b border-border flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-muted/30">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap flex-1">
+            <div className="relative w-full sm:w-60">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input 
+                type="text" 
+                placeholder="Buscar por título ou ID..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-ring transition-all"
+              />
+            </div>
+
+            {/* Filtro de Conexão */}
+            <div className="flex items-center bg-background border border-border rounded-md p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setConnectionFilter('all')}
+                className={`px-2.5 py-1.5 rounded transition-colors ${connectionFilter === 'all' ? 'bg-primary text-primary-foreground font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                onClick={() => setConnectionFilter('connected')}
+                className={`px-2.5 py-1.5 rounded transition-colors ${connectionFilter === 'connected' ? 'bg-primary text-primary-foreground font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Conectados
+              </button>
+              <button
+                type="button"
+                onClick={() => setConnectionFilter('unconnected')}
+                className={`px-2.5 py-1.5 rounded transition-colors ${connectionFilter === 'unconnected' ? 'bg-primary text-primary-foreground font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Sem Vínculo
+              </button>
+            </div>
+
+            {/* Filtro de Status */}
+            <div className="flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                <option value="all">Status: Todos</option>
+                <option value="active">Ativos</option>
+                <option value="paused">Pausados</option>
+                <option value="problem">Com problema</option>
+              </select>
+            </div>
+
+            {/* Filtro por Foto */}
+            <div className="flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
+              <select
+                value={photoFilter}
+                onChange={(e) => setPhotoFilter(e.target.value as any)}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                <option value="all">Foto: Todos</option>
+                <option value="with_photo">Com foto</option>
+                <option value="without_photo">Sem foto</option>
+              </select>
+            </div>
+
+            {/* Ordenação */}
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as any)}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                <option value="newest">Últimos criados</option>
+                <option value="az">A até Z</option>
+                <option value="za">Z até A</option>
+              </select>
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground font-medium">
-            {filteredListings.length} anúncios
+
+          <div className="text-xs text-muted-foreground font-medium whitespace-nowrap self-end lg:self-center bg-muted px-3 py-1.5 rounded-full">
+            {filteredListings.length} {filteredListings.length === 1 ? 'anúncio' : 'anúncios'}
           </div>
         </div>
 

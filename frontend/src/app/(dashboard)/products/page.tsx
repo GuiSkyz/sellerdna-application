@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2, Download, ShoppingBag, Link2, Unlink, Plus } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2, Download, ShoppingBag, Link2, Unlink, Plus, Filter, ArrowUpDown, Image as ImageIcon } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import { ActionSummaryDialog, ActionSummaryItem } from '@/components/features/ActionSummaryDialog';
 import { exportProductsToExcel } from '@/utils/exportProductsToExcel';
@@ -43,6 +43,8 @@ interface Product {
   shippingMode?: string;
   mlListingsCount?: number;
   mlListings?: MLListing[];
+  createdAt?: string;
+  created_at?: string;
   [key: string]: unknown;
 }
 
@@ -59,6 +61,12 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  // Filtros avançados e Ordenação
+  const [mlConnectionFilter, setMlConnectionFilter] = useState<'all' | 'connected' | 'unconnected'>('all');
+  const [mlStatusFilter, setMlStatusFilter] = useState<'all' | 'active' | 'paused' | 'problem'>('all');
+  const [photoFilter, setPhotoFilter] = useState<'all' | 'with_photo' | 'without_photo'>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'az' | 'za'>('newest');
   
   // Modal de Gerenciamento de Anúncios ML do Produto
   const [selectedProductForML, setSelectedProductForML] = useState<Product | null>(null);
@@ -339,7 +347,41 @@ export default function ProductsPage() {
     }
   };
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products
+    .filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
+                            p.sku.toLowerCase().includes(search.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // Filtro de conexão ML
+      const mlCount = typeof p.mlListingsCount === 'number' ? p.mlListingsCount : (p.mlListings?.length || 0);
+      if (mlConnectionFilter === 'connected' && mlCount === 0) return false;
+      if (mlConnectionFilter === 'unconnected' && mlCount > 0) return false;
+
+      // Filtro por foto
+      const hasPhoto = Boolean(p.imageUrl && p.imageUrl.trim() !== '' && p.imageUrl !== 'null');
+      if (photoFilter === 'with_photo' && !hasPhoto) return false;
+      if (photoFilter === 'without_photo' && hasPhoto) return false;
+
+      // Filtro por status dos anúncios ML conectados
+      if (mlStatusFilter !== 'all') {
+        const listings = p.mlListings || [];
+        if (mlStatusFilter === 'active' && !listings.some(l => l.status === 'active')) return false;
+        if (mlStatusFilter === 'paused' && !listings.some(l => l.status === 'paused')) return false;
+        if (mlStatusFilter === 'problem' && !listings.some(l => l.status !== 'active' && l.status !== 'paused')) return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'az') return a.name.localeCompare(b.name);
+      if (sortOrder === 'za') return b.name.localeCompare(a.name);
+      // 'newest' (Últimos criados)
+      const dateA = (a.createdAt || a.created_at) ? new Date((a.createdAt || a.created_at) as string).getTime() : 0;
+      const dateB = (b.createdAt || b.created_at) ? new Date((b.createdAt || b.created_at) as string).getTime() : 0;
+      if (dateA !== dateB) return dateB - dateA;
+      return 0;
+    });
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = filteredProducts.slice(
@@ -801,22 +843,93 @@ export default function ProductsPage() {
 
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
         {/* Toolbar */}
-        <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30">
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Buscar por nome ou SKU..." 
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-all"
-            />
+        <div className="p-4 border-b border-border flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-muted/30">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap flex-1">
+            <div className="relative w-full sm:w-60">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input 
+                type="text" 
+                placeholder="Buscar por nome ou SKU..." 
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-ring transition-all"
+              />
+            </div>
+
+            {/* Filtro de Conexão ML */}
+            <div className="flex items-center bg-background border border-border rounded-md p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => { setMlConnectionFilter('all'); setCurrentPage(1); }}
+                className={`px-2.5 py-1.5 rounded transition-colors ${mlConnectionFilter === 'all' ? 'bg-primary text-primary-foreground font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMlConnectionFilter('connected'); setCurrentPage(1); }}
+                className={`px-2.5 py-1.5 rounded transition-colors ${mlConnectionFilter === 'connected' ? 'bg-primary text-primary-foreground font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Com Anúncios ML
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMlConnectionFilter('unconnected'); setCurrentPage(1); }}
+                className={`px-2.5 py-1.5 rounded transition-colors ${mlConnectionFilter === 'unconnected' ? 'bg-primary text-primary-foreground font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Sem Anúncios ML
+              </button>
+            </div>
+
+            {/* Filtro de Status ML */}
+            <div className="flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
+              <select
+                value={mlStatusFilter}
+                onChange={(e) => { setMlStatusFilter(e.target.value as any); setCurrentPage(1); }}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                <option value="all">Status ML: Todos</option>
+                <option value="active">Anúncios Ativos</option>
+                <option value="paused">Anúncios Pausados</option>
+                <option value="problem">Com Problema</option>
+              </select>
+            </div>
+
+            {/* Filtro por Foto */}
+            <div className="flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
+              <select
+                value={photoFilter}
+                onChange={(e) => { setPhotoFilter(e.target.value as any); setCurrentPage(1); }}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                <option value="all">Foto: Todos</option>
+                <option value="with_photo">Com foto</option>
+                <option value="without_photo">Sem foto</option>
+              </select>
+            </div>
+
+            {/* Ordenação */}
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
+              <select
+                value={sortOrder}
+                onChange={(e) => { setSortOrder(e.target.value as any); setCurrentPage(1); }}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                <option value="newest">Últimos criados</option>
+                <option value="az">A até Z</option>
+                <option value="za">Z até A</option>
+              </select>
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground font-medium">
-            {filteredProducts.length} produtos
+
+          <div className="text-xs text-muted-foreground font-medium whitespace-nowrap self-end lg:self-center bg-muted px-3 py-1.5 rounded-full">
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
           </div>
         </div>
 
