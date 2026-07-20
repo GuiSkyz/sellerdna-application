@@ -2,11 +2,13 @@
 
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
+import { CommandPalette } from './CommandPalette';
 import { Menu, Search, Bell } from 'lucide-react';
 import { ModeToggle } from '../mode-toggle';
 
 export function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary">
@@ -14,6 +16,7 @@ export function DashboardLayoutWrapper({ children }: { children: React.ReactNode
       <div className="fixed inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,102,255,0.05),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.1),rgba(11,17,32,0))]"></div>
       
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      <CommandPalette open={isCommandOpen} onOpenChange={setIsCommandOpen} />
       
       <div className={`flex-1 flex flex-col transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] relative z-10 ${isSidebarOpen ? 'ml-[17.25rem]' : 'ml-[5.75rem]'} pr-3 py-3`}>
         {/* Floating Clean Header */}
@@ -27,13 +30,20 @@ export function DashboardLayoutWrapper({ children }: { children: React.ReactNode
               <Menu className="w-5 h-5 transition-transform duration-200 group-hover:scale-105" />
             </button>
             
-            <div className="relative hidden md:flex items-center group">
-              <Search className="w-4 h-4 absolute left-3.5 text-muted-foreground transition-colors group-focus-within:text-primary pointer-events-none" />
-              <input 
-                type="text" 
-                placeholder="Buscar em SellerDNA..." 
-                className="pl-10 pr-4 py-1.5 bg-muted/40 hover:bg-muted/60 focus:bg-background border border-border/40 focus:border-primary/40 focus:ring-4 focus:ring-primary/10 rounded-full text-sm w-80 transition-all outline-none shadow-sm text-foreground placeholder:text-muted-foreground/70"
-              />
+            <div className="relative hidden sm:block">
+              <button
+                onClick={() => setIsCommandOpen(true)}
+                className="flex items-center justify-between pl-3.5 pr-3 py-1.5 bg-muted/40 hover:bg-muted/70 border border-border/40 hover:border-primary/40 rounded-full text-sm w-72 md:w-80 transition-all shadow-sm group cursor-pointer text-left"
+                title="Abrir Command Palette (Ctrl+K)"
+              >
+                <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground transition-colors">
+                  <Search className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="text-sm font-medium">Buscar em SellerDNA...</span>
+                </div>
+                <div className="flex items-center gap-1 bg-background/80 px-2 py-0.5 rounded-md border border-border/60 text-[10px] font-extrabold text-muted-foreground group-hover:text-primary transition-colors">
+                  <span>⌘K</span>
+                </div>
+              </button>
             </div>
           </div>
           

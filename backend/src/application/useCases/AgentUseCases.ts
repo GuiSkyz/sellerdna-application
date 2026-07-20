@@ -156,6 +156,8 @@ export class AgentUseCases {
     }
 
     let createdCount = 0;
+    const createdProducts: any[] = [];
+    const failedProducts: any[] = [];
 
     for (const prod of selectedProducts) {
       try {
@@ -195,6 +197,7 @@ export class AgentUseCases {
         const { error: insErr } = await supabase.from('listings').insert(listingPayload);
         if (insErr) {
           console.error(`[AgentUseCases] Erro ao salvar anúncio no banco para o produto ${prod.id}:`, insErr);
+          failedProducts.push({ product_name: prod.name, error: insErr.message || 'Erro ao inserir na tabela listings' });
         } else {
           await supabase.from('ai_generations').insert({
             listing_id: listingId,
@@ -203,25 +206,48 @@ export class AgentUseCases {
             created_at: new Date().toISOString()
           });
           createdCount++;
+          createdProducts.push({ product_name: prod.name, title: title.substring(0, 60), status: 'Criado (Rascunho)' });
         }
 
         await new Promise(r => setTimeout(r, 3500));
       } catch (error: any) {
         console.warn(`[AgentUseCases] Falha na criação para o produto ${prod.id}:`, error?.message || error);
+        failedProducts.push({ product_name: prod.name, error: error?.message || String(error) });
         await new Promise(r => setTimeout(r, 3000));
         continue;
       }
     }
 
     const timeSaved = Number((createdCount * 0.25).toFixed(1));
-    const summaryMarkdown = `# 🚀 Relatório Semanal de Automação de Anúncios\n\n**Data da Execução:** ${new Date().toLocaleDateString('pt-BR')}\n**Status:** Concluído\n\n---\n\n## 🏆 Resumo dos Resultados\n- **Anúncios Gerados e Processados pela IA:** \`${createdCount}\` itens\n- **Economia Estimada de Tempo:** \`${timeSaved} horas\` humanas\n\n---\n\n## 🛠️ Detalhes da Operação\nO Agente processou os produtos pendentes e gerou títulos SEO + descrições de alta conversão.`;
+    let summaryMarkdown = `# 🚀 Relatório Semanal de Automação de Anúncios\n\n**Data da Execução:** ${new Date().toLocaleDateString('pt-BR')}\n**Status:** Concluído\n\n---\n\n## 🏆 Resumo dos Resultados\n- **Anúncios Gerados e Processados pela IA:** \`${createdCount}\` itens\n- **Erros / Falhas:** \`${failedProducts.length}\` itens\n- **Economia Estimada de Tempo:** \`${timeSaved} horas\` humanas\n\n---\n\n## 📦 Detalhamento dos Anúncios Gerados:\n`;
+
+    if (createdProducts.length > 0) {
+      createdProducts.forEach(p => {
+        summaryMarkdown += `- ✅ **${p.product_name}** → *Título SEO:* \`${p.title}\`\n`;
+      });
+    } else {
+      summaryMarkdown += `- *Nenhum anúncio criado nesta rodada (ou produtos sem foto).* \n`;
+    }
+
+    if (failedProducts.length > 0) {
+      summaryMarkdown += `\n---\n\n## ⚠️ Produtos com Falha ou Sem Anúncio:\n`;
+      failedProducts.forEach(fp => {
+        summaryMarkdown += `- ❌ **${fp.product_name}** → *Erro:* \`${fp.error}\`\n`;
+      });
+    }
 
     const { data: report } = await supabase.from('ai_agent_reports').insert({
       user_id: userId,
       report_type: 'WEEKLY_SUMMARY',
       title: `Relatório Semanal de Criação (${createdCount} criados)`,
       summary_markdown: summaryMarkdown,
-      metrics: { ads_created: createdCount, time_saved_hours: timeSaved },
+      metrics: { 
+        ads_created: createdCount, 
+        ads_failed: failedProducts.length,
+        time_saved_hours: timeSaved,
+        created_products: createdProducts,
+        failed_products: failedProducts
+      },
       status: 'UNREAD'
     }).select().single();
 
@@ -230,8 +256,14 @@ export class AgentUseCases {
       action_type: 'AD_CREATED',
       title: 'Rotina Semanal de Criação Concluída',
       description: `O Agente gerou ${createdCount} anúncios com IA SEO no Mercado Livre. Relatório emitido.`,
-      status: 'SUCCESS',
-      metadata: { created_count: createdCount, time_saved: timeSaved }
+      status: failedProducts.length > 0 ? (createdCount > 0 ? 'WARNING' : 'ERROR') : 'SUCCESS',
+      metadata: { 
+        created_count: createdCount, 
+        failed_count: failedProducts.length,
+        time_saved: timeSaved,
+        created_products: createdProducts,
+        failed_products: failedProducts
+      }
     });
 
     return { success: true, created_count: createdCount, report };

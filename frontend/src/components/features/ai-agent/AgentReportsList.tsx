@@ -169,16 +169,60 @@ export function AgentReportsList({ reports, loading, onRefresh }: AgentReportsPr
                     <span className="text-lg font-black text-primary">{selectedReport.metrics.time_saved_hours}h</span>
                   </div>
                 )}
+                {selectedReport.metrics.ads_failed !== undefined && (
+                  <div className="p-2.5 rounded-xl bg-background/80 border border-border/50 text-center">
+                    <span className="block text-[10px] uppercase font-bold text-muted-foreground">Falhas / Avisos</span>
+                    <span className={`text-lg font-black ${selectedReport.metrics.ads_failed > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{selectedReport.metrics.ads_failed}</span>
+                  </div>
+                )}
                 {selectedReport.metrics.seo_score_avg !== undefined && (
                   <div className="p-2.5 rounded-xl bg-background/80 border border-border/50 text-center">
                     <span className="block text-[10px] uppercase font-bold text-muted-foreground">Score SEO</span>
                     <span className="text-lg font-black text-emerald-500">{selectedReport.metrics.seo_score_avg}/100</span>
                   </div>
                 )}
-                {selectedReport.metrics.total_products !== undefined && (
-                  <div className="p-2.5 rounded-xl bg-background/80 border border-border/50 text-center">
-                    <span className="block text-[10px] uppercase font-bold text-muted-foreground">Itens Catálogo</span>
-                    <span className="text-lg font-black text-foreground">{selectedReport.metrics.total_products}</span>
+              </div>
+            )}
+
+            {/* Listas Estruturadas de Anúncios Criados e Erros no Modal */}
+            {selectedReport.metrics && (
+              <div className="px-6 pt-4 space-y-3">
+                {selectedReport.metrics.created_products && Array.isArray(selectedReport.metrics.created_products) && selectedReport.metrics.created_products.length > 0 && (
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 space-y-2">
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 uppercase">
+                      ✅ Anúncios Gerados e Salvos ({selectedReport.metrics.created_products.length}):
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-foreground/90 pl-1">
+                      {selectedReport.metrics.created_products.map((cp: any, idx: number) => (
+                        <li key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                          <div>
+                            <span className="font-bold text-foreground block sm:inline">{cp.title || cp.product_name}</span>
+                            {cp.product_name && cp.title && cp.product_name !== cp.title && (
+                              <span className="text-muted-foreground text-[11px] sm:ml-1.5">({cp.product_name})</span>
+                            )}
+                          </div>
+                          <span className="self-start sm:self-center text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                            {cp.status || 'Criado'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {selectedReport.metrics.failed_products && Array.isArray(selectedReport.metrics.failed_products) && selectedReport.metrics.failed_products.length > 0 && (
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 space-y-2">
+                    <span className="text-xs font-black text-red-600 dark:text-red-400 flex items-center gap-1.5 uppercase">
+                      ⚠️ Erros ou Itens Não Criados ({selectedReport.metrics.failed_products.length}):
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-foreground/90 pl-1">
+                      {selectedReport.metrics.failed_products.map((fp: any, idx: number) => (
+                        <li key={idx} className="flex flex-col border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                          <span className="font-bold text-foreground">{fp.product_name || fp.title || 'Produto'}</span>
+                          <span className="text-[11px] text-red-500 dark:text-red-400 font-medium">{fp.error || 'Erro na geração'}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
@@ -187,26 +231,31 @@ export function AgentReportsList({ reports, loading, onRefresh }: AgentReportsPr
             {/* Modal Body (Markdown/Texto Renderizado) */}
             <div className="p-6 overflow-y-auto space-y-4 text-sm sm:text-base text-foreground/90 leading-relaxed font-sans">
               {selectedReport.summary_markdown?.split('\n').map((line, idx) => {
+                const cleanText = line
+                  .replace(/\*\*(.*?)\*\*/g, '$1')
+                  .replace(/\*(.*?)\*/g, '$1')
+                  .replace(/`(.*?)`/g, '$1');
+
                 if (line.startsWith('# ')) {
-                  return <h1 key={idx} className="text-xl sm:text-2xl font-black text-foreground pt-2 pb-1 border-b border-border/40">{line.replace('# ', '')}</h1>;
+                  return <h1 key={idx} className="text-xl sm:text-2xl font-black text-foreground pt-2 pb-1 border-b border-border/40">{cleanText.replace('# ', '')}</h1>;
                 }
                 if (line.startsWith('## ')) {
-                  return <h2 key={idx} className="text-base sm:text-lg font-extrabold text-primary pt-3">{line.replace('## ', '')}</h2>;
+                  return <h2 key={idx} className="text-base sm:text-lg font-extrabold text-primary pt-3">{cleanText.replace('## ', '')}</h2>;
                 }
                 if (line.startsWith('### ')) {
-                  return <h3 key={idx} className="text-sm font-bold text-foreground pt-2">{line.replace('### ', '')}</h3>;
+                  return <h3 key={idx} className="text-sm font-bold text-foreground pt-2">{cleanText.replace('### ', '')}</h3>;
                 }
                 if (line.startsWith('- ')) {
                   return (
                     <li key={idx} className="ml-4 list-disc text-sm text-foreground/80 pl-1">
-                      {line.replace('- ', '')}
+                      {cleanText.replace('- ', '')}
                     </li>
                   );
                 }
                 if (line.trim() === '---') {
                   return <hr key={idx} className="my-4 border-border/60" />;
                 }
-                return line.trim() ? <p key={idx} className="text-sm text-foreground/80">{line}</p> : <div key={idx} className="h-2" />;
+                return line.trim() ? <p key={idx} className="text-sm text-foreground/80">{cleanText}</p> : <div key={idx} className="h-2" />;
               })}
             </div>
 

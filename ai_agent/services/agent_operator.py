@@ -186,6 +186,8 @@ class AgentOperatorService:
         created_count = 0
         failed_count = 0
         created_listings = []
+        created_products = []
+        failed_products = []
 
         if self.supabase:
             try:
@@ -280,9 +282,18 @@ class AgentOperatorService:
                         }).execute()
 
                         created_count += 1
+                        created_products.append({
+                            "product_name": prod.get("name"),
+                            "title": seo_title[:60],
+                            "status": "Criado (Rascunho)"
+                        })
                     except Exception as item_err:
                         failed_count += 1
                         logger.warning(f"[AgentOperator] Falha no produto {prod.get('name')}: {str(item_err)}")
+                        failed_products.append({
+                            "product_name": prod.get("name") or f"Produto ID {prod.get('id')}",
+                            "error": str(item_err)
+                        })
                         continue
 
             except Exception as e:
@@ -292,7 +303,9 @@ class AgentOperatorService:
             "created_count": created_count,
             "failed_count": failed_count,
             "target_count": target_count,
-            "mode": auto_mode
+            "mode": auto_mode,
+            "created_products": created_products,
+            "failed_products": failed_products
         }
 
         # Gera relatório semanal executivo em Markdown

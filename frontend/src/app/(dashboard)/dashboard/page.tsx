@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Play, Pause, TrendingUp, Package, Activity, Plus, Sparkles, ArrowUpRight } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import Link from 'next/link';
+import { SalesOverviewChart } from '@/components/features/dashboard/SalesOverviewChart';
 
 interface ActivityItem {
   id: string;
@@ -146,43 +147,7 @@ export default function DashboardPage() {
       {/* Charts & Activities Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sales Chart Box */}
-        <div className="lg:col-span-2 bg-card/90 backdrop-blur-xl border border-border/40 rounded-2xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)] flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Activity className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-foreground">Visão Geral de Vendas</h2>
-                  <p className="text-xs text-muted-foreground">Monitoramento de conversão e receita diária</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs font-medium bg-muted/40 px-3 py-1.5 rounded-full border border-border/30">
-                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                <span>Últimos 30 dias</span>
-              </div>
-            </div>
-
-            {/* Clean Chart Area */}
-            <div className="h-72 flex flex-col items-center justify-center border border-dashed border-border/40 rounded-xl bg-gradient-to-b from-muted/20 to-transparent relative overflow-hidden group">
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity">
-                {/* Silhouette modern lines representation */}
-                <div className="w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent"></div>
-              </div>
-              <Activity className="h-10 w-10 text-primary/40 mb-3 animate-pulse" />
-              <p className="text-sm font-semibold text-foreground">Gráfico Analítico Integrado</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-xs text-center">Os dados de vendas contínuos do Mercado Livre serão processados e renderizados aqui.</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/30 text-xs text-muted-foreground">
-            <span>Sincronizado automaticamente com API do Mercado Livre</span>
-            <Link href="/listings" className="text-primary hover:underline font-semibold flex items-center gap-1">
-              Ver todos os anúncios &rarr;
-            </Link>
-          </div>
-        </div>
+        <SalesOverviewChart />
 
         {/* Recent Activities Feed */}
         <div className="bg-card/90 backdrop-blur-xl border border-border/40 rounded-2xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)] flex flex-col">

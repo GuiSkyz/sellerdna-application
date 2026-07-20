@@ -132,6 +132,45 @@ export function AgentActivityFeed({ actions, loading, onRefresh }: AgentActivity
                       {act.description}
                     </p>
                   )}
+
+                  {act.metadata?.created_products && Array.isArray(act.metadata.created_products) && act.metadata.created_products.length > 0 && (
+                    <div className="mt-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 space-y-2">
+                      <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 uppercase">
+                        <Box className="w-3.5 h-3.5" /> Anúncios Gerados e Salvos ({act.metadata.created_products.length}):
+                      </span>
+                      <ul className="space-y-1.5 text-xs pl-1">
+                        {act.metadata.created_products.map((cp: any, idx: number) => (
+                          <li key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                            <div>
+                              <span className="font-bold text-foreground block sm:inline">{cp.title || cp.product_name}</span>
+                              {cp.product_name && cp.title && cp.product_name !== cp.title && (
+                                <span className="text-muted-foreground text-[11px] sm:ml-1.5">({cp.product_name})</span>
+                              )}
+                            </div>
+                            <span className="self-start sm:self-center text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              {cp.status || 'Criado'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {act.metadata?.failed_products && Array.isArray(act.metadata.failed_products) && act.metadata.failed_products.length > 0 && (
+                    <div className="mt-2.5 bg-red-500/5 border border-red-500/20 rounded-xl p-3 space-y-2">
+                      <span className="text-[11px] font-black text-red-600 dark:text-red-400 flex items-center gap-1.5 uppercase">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Erros ou Itens Não Criados ({act.metadata.failed_products.length}):
+                      </span>
+                      <ul className="space-y-1.5 text-xs pl-1">
+                        {act.metadata.failed_products.map((fp: any, idx: number) => (
+                          <li key={idx} className="flex flex-col border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                            <span className="font-bold text-foreground">{fp.product_name || fp.title || 'Produto'}</span>
+                            <span className="text-[11px] text-red-500 dark:text-red-400 font-medium">{fp.error || 'Erro na geração'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             );
