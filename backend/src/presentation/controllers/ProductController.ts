@@ -68,8 +68,8 @@ export class ProductController {
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {
       const userId = await this.getUserId(request);
-      const { data: products } = await supabase.from('products').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-      return reply.send(products || []);
+      const products = await this.productRepository.listAll(userId);
+      return reply.send(products);
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Erro ao listar produtos' });

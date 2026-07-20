@@ -42,7 +42,7 @@ export class ListingController {
 
       const { data: listings, error } = await supabase
         .from('listings')
-        .select('*')
+        .select('*, product:products(id, name, sku)')
         .in('account_id', accountIds)
         .order('created_at', { ascending: false });
 
@@ -241,6 +241,32 @@ export class ListingController {
     } catch (error: any) {
       request.log.error(error);
       return reply.status(500).send({ error: error.message || 'Erro ao publicar em lote' });
+    }
+  }
+
+  async linkProduct(request: FastifyRequest<{ Params: { id: string }, Body: { productId: string | null } }>, reply: FastifyReply) {
+    try {
+      const userId = await this.getUserId(request);
+      const { id } = request.params;
+      const { productId } = request.body;
+
+      const { data: listing } = await supabase.from('listings').select('id, account_id').eq('id', id).single();
+      if (!listing) {
+        return reply.status(404).send({ error: 'Anúncio não encontrado' });
+      }
+
+      const { data: account } = await supabase.from('mercadolivre_accounts').select('id').eq('id', listing.account_id).eq('user_id', userId).single();
+      if (!account) {
+        return reply.status(403).send({ error: 'Sem permissão para alterar este anúncio' });
+      }
+
+      const { error } = await supabase.from('listings').update({ product_id: productId }).eq('id', id);
+      if (error) throw error;
+
+      return reply.send({ success: true, message: productId ? 'Anúncio vinculado com sucesso' : 'Anúncio desvinculado com sucesso' });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao vincular/desvincular anúncio' });
     }
   }
 }

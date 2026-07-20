@@ -1,3 +1,14 @@
+export interface MLListingSummary {
+  id: string;
+  mlItemId: string;
+  title: string;
+  price: number;
+  availableQuantity: number;
+  status: string;
+  permalink?: string;
+  createdAt?: string;
+}
+
 export interface Product {
   id: string;
   userId: string;
@@ -24,5 +35,7 @@ export interface Product {
   mlCategoryId?: string;
   mlAttributes?: Record<string, any>;
   shippingMode?: string;
+  mlListingsCount?: number;
+  mlListings?: MLListingSummary[];
   createdAt: Date;
 }

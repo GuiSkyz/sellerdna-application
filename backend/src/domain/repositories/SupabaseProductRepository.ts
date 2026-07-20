@@ -1,4 +1,4 @@
-import { Product } from '../entities/Product';
+import { Product, MLListingSummary } from '../entities/Product';
 import { supabase } from '../../infrastructure/database/supabase';
 
 const formatImageUrl = (url: string | undefined): string | undefined => {
@@ -47,6 +47,21 @@ const getPrimaryImageUrl = (imageUrl: any, imageUrls: any): string | undefined =
   return undefined;
 };
 
+const formatMLListings = (listingsData: any): { mlListings: MLListingSummary[]; mlListingsCount: number } => {
+  const arr = Array.isArray(listingsData) ? listingsData : [];
+  const mlListings: MLListingSummary[] = arr.map((l: any) => ({
+    id: l.id,
+    mlItemId: l.ml_item_id,
+    title: l.title,
+    price: Number(l.price || 0),
+    availableQuantity: Number(l.available_quantity || 0),
+    status: l.status,
+    permalink: l.permalink,
+    createdAt: l.created_at
+  }));
+  return { mlListings, mlListingsCount: mlListings.length };
+};
+
 export class SupabaseProductRepository {
   async createMany(products: Product[]): Promise<void> {
     const { error } = await supabase.from('products').insert(
@@ -88,7 +103,7 @@ export class SupabaseProductRepository {
   async listAll(userId?: string): Promise<Product[]> {
     let query = supabase
       .from('products')
-      .select('*')
+      .select('*, listings(id, ml_item_id, title, price, available_quantity, status, permalink, created_at)')
       .order('created_at', { ascending: false });
 
     if (userId) {
@@ -102,44 +117,51 @@ export class SupabaseProductRepository {
       throw new Error('Falha ao listar produtos do banco de dados.');
     }
 
-    return (data || []).map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      customId: row.custom_id,
-      name: row.name,
-      productType: row.product_type,
-      brand: row.brand,
-      sizeMl: row.size_ml,
-      perfumeType: row.perfume_type,
-      price: Number(row.price),
-      quantity: Number(row.quantity),
-      gender: row.gender,
-      expirationDate: row.expiration_date,
-      weight: Number(row.weight),
-      ncm: row.ncm,
-      sku: row.sku,
-      imageUrl: getPrimaryImageUrl(row.image_url, row.image_urls),
-      imageUrls: row.image_urls,
-      condition: row.condition,
-      listingTypeId: row.listing_type_id,
-      gtin: row.gtin,
-      warrantyType: row.warranty_type,
-      warrantyTime: row.warranty_time,
-      mlCategoryId: row.ml_category_id,
-      mlAttributes: row.ml_attributes,
-      createdAt: new Date(row.created_at)
-    }));
+    return (data || []).map(row => {
+      const { mlListings, mlListingsCount } = formatMLListings(row.listings);
+      return {
+        id: row.id,
+        userId: row.user_id,
+        customId: row.custom_id,
+        name: row.name,
+        productType: row.product_type,
+        brand: row.brand,
+        sizeMl: row.size_ml,
+        perfumeType: row.perfume_type,
+        price: Number(row.price),
+        quantity: Number(row.quantity),
+        gender: row.gender,
+        expirationDate: row.expiration_date,
+        weight: Number(row.weight),
+        ncm: row.ncm,
+        sku: row.sku,
+        imageUrl: getPrimaryImageUrl(row.image_url, row.image_urls),
+        imageUrls: row.image_urls,
+        condition: row.condition,
+        listingTypeId: row.listing_type_id,
+        gtin: row.gtin,
+        warrantyType: row.warranty_type,
+        warrantyTime: row.warranty_time,
+        mlCategoryId: row.ml_category_id,
+        mlAttributes: row.ml_attributes,
+        mlListingsCount,
+        mlListings,
+        createdAt: new Date(row.created_at)
+      };
+    });
   }
 
   async getById(id: string, userId: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, listings(id, ml_item_id, title, price, available_quantity, status, permalink, created_at)')
       .eq('id', id)
       .eq('user_id', userId)
       .single();
 
     if (error || !data) return null;
+
+    const { mlListings, mlListingsCount } = formatMLListings(data.listings);
 
     return {
       id: data.id,
@@ -166,6 +188,8 @@ export class SupabaseProductRepository {
       warrantyTime: data.warranty_time,
       mlCategoryId: data.ml_category_id,
       mlAttributes: data.ml_attributes,
+      mlListingsCount,
+      mlListings,
       createdAt: new Date(data.created_at)
     };
   }
@@ -355,6 +379,8 @@ export class SupabaseProductRepository {
       warrantyTime: data.warranty_time,
       mlCategoryId: data.ml_category_id,
       mlAttributes: data.ml_attributes,
+      mlListingsCount: 0,
+      mlListings: [],
       createdAt: new Date(data.created_at)
     };
   }

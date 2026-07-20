@@ -2,10 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2, Download } from 'lucide-react';
+import { PackageSearch, Sparkles, UploadCloud, Search, Trash2, Edit, Package, ExternalLink, Tag, Shield, FileText, Layers, DollarSign, SlidersHorizontal, CheckCircle2, Download, ShoppingBag, Link2, Unlink, Plus } from 'lucide-react';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 import { ActionSummaryDialog, ActionSummaryItem } from '@/components/features/ActionSummaryDialog';
 import { exportProductsToExcel } from '@/utils/exportProductsToExcel';
+
+interface MLListing {
+  id: string;
+  mlItemId: string;
+  title: string;
+  price: number;
+  availableQuantity: number;
+  status: string;
+  permalink?: string;
+  createdAt?: string;
+}
 
 interface Product {
   id: string;
@@ -31,6 +42,7 @@ interface Product {
   weight?: number;
   shippingMode?: string;
   mlListingsCount?: number;
+  mlListings?: MLListing[];
   [key: string]: unknown;
 }
 
@@ -47,6 +59,15 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  // Modal de Gerenciamento de Anúncios ML do Produto
+  const [selectedProductForML, setSelectedProductForML] = useState<Product | null>(null);
+  const [allUserListings, setAllUserListings] = useState<MLListing[]>([]);
+  const [linkingListingId, setLinkingListingId] = useState<string>('');
+  const [isLinking, setIsLinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Paginação
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -115,13 +136,25 @@ export default function ProductsPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+        let rawProducts: any[] = [];
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+          const apiRes = await authenticatedFetch(`${apiUrl}/api/products`);
+          if (apiRes.ok) {
+            rawProducts = await apiRes.json();
+          }
+        } catch {}
 
-        if (error) throw error;
+        if (rawProducts.length === 0) {
+          const { data, error } = await supabase
+            .from('products')
+            .select('*, listings(id, ml_item_id, title, price, available_quantity, status, permalink, created_at)')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+          rawProducts = data || [];
+        }
 
         const formatImageUrl = (url: string | undefined): string | undefined => {
           if (!url || typeof url !== 'string' || url.trim() === '') return undefined;
@@ -169,30 +202,45 @@ export default function ProductsPage() {
           return undefined;
         };
 
-        const mappedData = data.map(d => ({
-          id: d.id,
-          name: d.name || '',
-          productType: d.product_type || 'Perfume',
-          brand: d.brand || '',
-          price: Number(d.price || 0),
-          quantity: Number(d.quantity || 0),
-          imageUrl: getPrimaryImageUrl(d.image_url, d.image_urls) || '',
-          sku: d.sku || '',
-          customId: d.custom_id || '',
-          ncm: d.ncm || '',
-          mlCategoryId: d.ml_category_id || '',
-          gtin: d.gtin || '',
-          condition: d.condition || 'new',
-          listingTypeId: d.listing_type_id || 'gold_special',
-          warrantyType: d.warranty_type || 'Garantia do vendedor',
-          warrantyTime: d.warranty_time || '30 dias',
-          perfumeType: d.perfume_type || '',
-          sizeMl: d.size_ml || '',
-          gender: d.gender || '',
-          expirationDate: d.expiration_date || '',
-          weight: Number(d.weight || 0),
-          shippingMode: d.shipping_mode || '',
-        }));
+        const mappedData = rawProducts.map(d => {
+          const listingsArr = Array.isArray(d.listings) ? d.listings : (Array.isArray(d.mlListings) ? d.mlListings : []);
+          const mlListings: MLListing[] = listingsArr.map((l: any) => ({
+            id: l.id,
+            mlItemId: l.ml_item_id || l.mlItemId || '',
+            title: l.title || '',
+            price: Number(l.price || 0),
+            availableQuantity: Number(l.available_quantity || l.availableQuantity || 0),
+            status: l.status || '',
+            permalink: l.permalink || '',
+            createdAt: l.created_at || l.createdAt || ''
+          }));
+          return {
+            id: d.id,
+            name: d.name || '',
+            productType: d.product_type || d.productType || 'Perfume',
+            brand: d.brand || '',
+            price: Number(d.price || 0),
+            quantity: Number(d.quantity || 0),
+            imageUrl: getPrimaryImageUrl(d.image_url || d.imageUrl, d.image_urls || d.imageUrls) || '',
+            sku: d.sku || '',
+            customId: d.custom_id || d.customId || '',
+            ncm: d.ncm || '',
+            mlCategoryId: d.ml_category_id || d.mlCategoryId || '',
+            gtin: d.gtin || '',
+            condition: d.condition || 'new',
+            listingTypeId: d.listing_type_id || d.listingTypeId || 'gold_special',
+            warrantyType: d.warranty_type || d.warrantyType || 'Garantia do vendedor',
+            warrantyTime: d.warranty_time || d.warrantyTime || '30 dias',
+            perfumeType: d.perfume_type || d.perfumeType || '',
+            sizeMl: d.size_ml || d.sizeMl || '',
+            gender: d.gender || '',
+            expirationDate: d.expiration_date || d.expirationDate || '',
+            weight: Number(d.weight || 0),
+            shippingMode: d.shipping_mode || d.shippingMode || '',
+            mlListingsCount: typeof d.mlListingsCount === 'number' && d.mlListingsCount > 0 ? d.mlListingsCount : mlListings.length,
+            mlListings
+          };
+        });
         
         setProducts(mappedData);
       } catch (err) {
@@ -203,6 +251,93 @@ export default function ProductsPage() {
     }
     fetchProducts();
   }, []);
+
+  const openMLListingsModal = async (product: Product) => {
+    setSelectedProductForML(product);
+    setLinkingListingId('');
+    setError(null);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/listings`);
+      if (res.ok) {
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : (data.listings || []);
+        const mappedListings: MLListing[] = arr.map((l: any) => ({
+          id: l.id,
+          mlItemId: l.ml_item_id || l.mlItemId || '',
+          title: l.title || '',
+          price: Number(l.price || 0),
+          availableQuantity: Number(l.available_quantity || l.availableQuantity || 0),
+          status: l.status || '',
+          permalink: l.permalink || '',
+          createdAt: l.created_at || l.createdAt || ''
+        }));
+        setAllUserListings(mappedListings);
+      }
+    } catch (e) {
+      console.error('Falha ao buscar anúncios do usuário', e);
+    }
+  };
+
+  const handleLinkListing = async () => {
+    if (!selectedProductForML || !linkingListingId) return;
+    setIsLinking(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/listings/${linkingListingId}/link`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: selectedProductForML.id })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Falha ao vincular anúncio');
+      }
+      const linkedListing = allUserListings.find(l => l.id === linkingListingId);
+      if (linkedListing) {
+        const updatedListings = [...(selectedProductForML.mlListings || []), linkedListing];
+        const updatedProduct = {
+          ...selectedProductForML,
+          mlListings: updatedListings,
+          mlListingsCount: updatedListings.length
+        };
+        setSelectedProductForML(updatedProduct);
+        setProducts(prev => prev.map(p => p.id === selectedProductForML.id ? updatedProduct : p));
+        setLinkingListingId('');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Erro ao vincular anúncio');
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const handleUnlinkListing = async (listingId: string) => {
+    if (!selectedProductForML) return;
+    if (!confirm('Deseja realmente desvincular este anúncio do produto? O anúncio não será excluído do Mercado Livre, apenas desconectado do produto no sistema.')) return;
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/listings/${listingId}/link`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: null })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Falha ao desvincular anúncio');
+      }
+      const updatedListings = (selectedProductForML.mlListings || []).filter(l => l.id !== listingId);
+      const updatedProduct = {
+        ...selectedProductForML,
+        mlListings: updatedListings,
+        mlListingsCount: updatedListings.length
+      };
+      setSelectedProductForML(updatedProduct);
+      setProducts(prev => prev.map(p => p.id === selectedProductForML.id ? updatedProduct : p));
+    } catch (e: any) {
+      alert(e.message || 'Erro ao desvincular anúncio');
+    }
+  };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()));
 
@@ -768,9 +903,19 @@ export default function ProductsPage() {
                     {product.ncm || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+                    <button
+                      type="button"
+                      onClick={() => openMLListingsModal(product)}
+                      className={`inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all shadow-sm ${
+                        (product.mlListingsCount || 0) > 0
+                          ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500/25 cursor-pointer scale-100 hover:scale-105'
+                          : 'bg-secondary text-secondary-foreground border border-border hover:bg-muted cursor-pointer'
+                      }`}
+                      title="Clique para gerenciar os anúncios do Mercado Livre para este produto"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
                       {product.mlListingsCount || 0}
-                    </span>
+                    </button>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1332,6 +1477,157 @@ export default function ProductsPage() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Gerenciamento de Anúncios ML do Produto */}
+      {selectedProductForML && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-xl shadow-lg max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-purple-500" />
+                  Anúncios no Mercado Livre
+                </h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Produto: <span className="font-medium text-foreground">{selectedProductForML.name}</span> (SKU: {selectedProductForML.sku || 'N/A'})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedProductForML(null)}
+                className="text-muted-foreground hover:text-foreground text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-muted transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center justify-between">
+                  <span>Anúncios Conectados ({selectedProductForML.mlListings?.length || 0})</span>
+                </h4>
+
+                {(!selectedProductForML.mlListings || selectedProductForML.mlListings.length === 0) ? (
+                  <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed border-border p-6">
+                    <ShoppingBag className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                    <p className="text-sm font-medium text-foreground">Nenhum anúncio do Mercado Livre conectado a este produto.</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Você pode vincular um anúncio existente abaixo ou publicar este produto diretamente no Mercado Livre.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedProductForML.mlListings.map(listing => (
+                      <div
+                        key={listing.id}
+                        className="p-4 bg-background border border-border rounded-xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-primary/40"
+                      >
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-purple-600 dark:text-purple-400 font-semibold bg-purple-500/10 px-2 py-0.5 rounded">
+                              {listing.mlItemId}
+                            </span>
+                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                              listing.status === 'active' || listing.status === 'Ativo'
+                                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                                : listing.status === 'paused' || listing.status === 'Pausado'
+                                ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                : 'bg-muted text-muted-foreground border-border'
+                            }`}>
+                              {listing.status === 'active' ? 'Ativo' : listing.status === 'paused' ? 'Pausado' : listing.status}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-foreground truncate" title={listing.title}>
+                            {listing.title}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Preço: <strong className="text-foreground">R$ {Number(listing.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></span>
+                            <span>Estoque: <strong className="text-foreground">{listing.availableQuantity} un</strong></span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                          {listing.permalink && (
+                            <a
+                              href={listing.permalink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
+                              title="Ver anúncio no Mercado Livre"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Ver no ML
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleUnlinkListing(listing.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors border border-transparent hover:border-destructive/20"
+                            title="Desconectar este anúncio do produto (não deleta do ML)"
+                          >
+                            <Unlink className="w-3.5 h-3.5" />
+                            Desconectar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Vincular manualmente outro anúncio */}
+              <div className="pt-4 border-t border-border">
+                <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                  <Link2 className="w-4 h-4 text-primary" />
+                  Conectar Anúncio Existente
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Caso o anúncio já exista no seu Mercado Livre mas não esteja vinculado, selecione-o abaixo:
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    value={linkingListingId}
+                    onChange={(e) => setLinkingListingId(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">-- Selecione um anúncio para vincular --</option>
+                    {allUserListings
+                      .filter(l => !(selectedProductForML.mlListings || []).some(m => m.id === l.id))
+                      .map(l => (
+                        <option key={l.id} value={l.id}>
+                          [{l.mlItemId}] {l.title} (R$ {Number(l.price || 0).toFixed(2)})
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleLinkListing}
+                    disabled={!linkingListingId || isLinking}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 shrink-0"
+                  >
+                    {isLinking ? (
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent"></span>
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    Conectar ao Produto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border bg-muted/20 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedProductForML(null)}
+                className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm font-medium transition-colors"
+              >
+                Concluído
+              </button>
+            </div>
           </div>
         </div>
       )}

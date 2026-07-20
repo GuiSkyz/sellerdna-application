@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Store, RefreshCw, Search, ExternalLink, Activity, ShoppingCart, Eye, Zap } from 'lucide-react';
+import { Store, RefreshCw, Search, ExternalLink, Activity, ShoppingCart, Eye, Zap, Link2, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/utils/authenticatedFetch';
 
@@ -17,6 +17,12 @@ interface Listing {
   status: string;
   permalink: string;
   created_at: string;
+  product_id?: string;
+  product?: {
+    id: string;
+    name: string;
+    sku: string;
+  };
 }
 
 interface MLAccount {
@@ -33,7 +39,12 @@ export default function ListingsPage() {
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [accounts, setAccounts] = useState<MLAccount[]>([]);
+  const [products, setProducts] = useState<Array<{ id: string; name: string; sku?: string; }>>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const [linkingListing, setLinkingListing] = useState<Listing | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [isUpdatingLink, setIsUpdatingLink] = useState(false);
 
   const fetchListings = async () => {
     try {
@@ -61,9 +72,22 @@ export default function ListingsPage() {
     }
   };
 
+  const fetchProducts = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/products`);
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
-      await Promise.all([fetchAccounts(), fetchListings()]);
+      await Promise.all([fetchAccounts(), fetchListings(), fetchProducts()]);
     };
     init();
   }, []);
@@ -113,6 +137,35 @@ export default function ListingsPage() {
       next.delete(id);
     }
     setSelectedIds(next);
+  };
+
+  const handleOpenLinkModal = (listing: Listing) => {
+    setLinkingListing(listing);
+    setSelectedProductId(listing.product_id || (listing.product ? listing.product.id : ''));
+  };
+
+  const handleSaveLink = async () => {
+    if (!linkingListing) return;
+    setIsUpdatingLink(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333';
+      const res = await authenticatedFetch(`${apiUrl}/api/listings/${linkingListing.id}/link`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: selectedProductId || null })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao vincular produto');
+      }
+      toast.success(selectedProductId ? 'Anúncio vinculado ao produto com sucesso!' : 'Anúncio desvinculado!');
+      await fetchListings();
+      setLinkingListing(null);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao atualizar vínculo');
+    } finally {
+      setIsUpdatingLink(false);
+    }
   };
 
   const filteredListings = listings.filter(l => 
@@ -177,6 +230,7 @@ export default function ListingsPage() {
                   />
                 </th>
                 <th className="px-6 py-4">Anúncio</th>
+                <th className="px-6 py-4">Produto Conectado</th>
                 <th className="px-6 py-4 text-center">Saúde</th>
                 <th className="px-6 py-4 text-center">Métricas</th>
                 <th className="px-6 py-4">Estoque</th>
@@ -203,6 +257,40 @@ export default function ListingsPage() {
                         <span>R$ {listing.price.toFixed(2)}</span>
                       </span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {listing.product || listing.product_id ? (
+                      <div className="flex items-center justify-between gap-2 group/prod">
+                        <div className="flex flex-col max-w-[180px]">
+                          <span className="text-xs font-semibold text-foreground truncate" title={listing.product?.name || 'Produto Conectado'}>
+                            {listing.product?.name || 'Produto Conectado'}
+                          </span>
+                          {listing.product?.sku && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              SKU: {listing.product.sku}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenLinkModal(listing)}
+                          className="opacity-0 group-hover/prod:opacity-100 p-1 text-muted-foreground hover:text-primary transition-opacity"
+                          title="Alterar produto conectado"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenLinkModal(listing)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20 transition-colors"
+                        title="Vincular este anúncio a um produto do sistema"
+                      >
+                        <Unlink className="w-3.5 h-3.5" />
+                        Sem Vínculo
+                      </button>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-foreground">
@@ -250,7 +338,7 @@ export default function ListingsPage() {
               ))}
               {filteredListings.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-6 py-16 text-center">
                     <Store className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                     <p className="text-foreground font-medium">Nenhum anúncio encontrado.</p>
                     <p className="text-sm text-muted-foreground mt-1">Conecte sua conta e clique em Sincronizar Anúncios.</p>
@@ -308,6 +396,60 @@ export default function ListingsPage() {
             >
               &times;
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Conectar Anúncio a Produto */}
+      {linkingListing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-xl shadow-lg max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Link2 className="w-5 h-5 text-primary" />
+              Conectar Anúncio a Produto
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">
+              Selecione qual produto do seu inventário está associado a este anúncio do Mercado Livre.
+            </p>
+
+            <div className="bg-muted/30 p-3 rounded-lg border border-border mb-4 text-xs space-y-1">
+              <div><span className="text-muted-foreground">Anúncio:</span> <strong className="text-foreground">{linkingListing.title}</strong></div>
+              <div><span className="text-muted-foreground">ID ML:</span> <span className="font-mono text-purple-600 font-semibold">{linkingListing.ml_item_id}</span></div>
+            </div>
+
+            <div className="space-y-2 mb-6">
+              <label className="text-xs font-medium text-foreground block">Produto do Inventário</label>
+              <select
+                value={selectedProductId}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">-- Sem vínculo (desconectar) --</option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.sku ? `(SKU: ${p.sku})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setLinkingListing(null)}
+                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveLink}
+                disabled={isUpdatingLink}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                {isUpdatingLink ? 'Salvando...' : 'Salvar Vínculo'}
+              </button>
+            </div>
           </div>
         </div>
       )}
