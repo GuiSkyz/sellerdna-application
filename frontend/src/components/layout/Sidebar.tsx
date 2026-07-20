@@ -24,26 +24,28 @@ export function Sidebar({ isOpen }: SidebarProps) {
 
   return (
     <aside 
-      className={`fixed top-0 left-0 h-screen bg-card/80 backdrop-blur-xl border-r border-border/50 flex flex-col transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)] ${
+      className={`fixed top-3 left-3 bottom-3 bg-card/90 backdrop-blur-2xl border border-border/40 rounded-2xl flex flex-col transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] z-50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] overflow-hidden ${
         isOpen ? 'w-64' : 'w-20'
       }`}
     >
+      {/* Brand / Logo */}
       <div className="h-20 flex items-center justify-center px-4 mb-2">
-        <div className="flex items-center gap-3 overflow-hidden w-full px-2">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/30 flex-shrink-0 text-primary-foreground">
+        <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden w-full px-2 group">
+          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-primary shadow-md shadow-primary/25 flex-shrink-0 text-primary-foreground transition-transform duration-300 group-hover:scale-105">
             <Box className="w-5 h-5" />
           </div>
-          <span className={`font-black text-xl tracking-tight text-foreground transition-all duration-300 whitespace-nowrap ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 w-0 hidden'}`}>
-            SELLER<span className="text-primary">DNA</span>
+          <span className={`font-black text-lg tracking-tight text-foreground transition-all duration-300 whitespace-nowrap ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 w-0 hidden'}`}>
+            SELLER<span className="text-primary font-extrabold">DNA</span>
           </span>
-        </div>
+        </Link>
       </div>
       
+      {/* Nav List */}
       <div className="px-3 flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
-        <div className={`text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 px-3 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
+        <div className={`text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-2.5 px-3 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
           Menu Principal
         </div>
-        <nav className="space-y-1">
+        <nav className="space-y-1.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             const Icon = item.icon;
@@ -53,33 +55,29 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 key={item.name}
                 href={item.href}
                 title={!isOpen ? item.name : undefined}
-                className={`relative flex items-center gap-3 rounded-xl transition-all duration-300 group overflow-hidden ${
-                  isOpen ? 'px-3 py-3' : 'justify-center p-3 mx-auto w-12 h-12'
+                className={`relative flex items-center gap-3.5 rounded-xl transition-all duration-200 group overflow-hidden ${
+                  isOpen ? 'px-3.5 py-3' : 'justify-center p-3 mx-auto w-11 h-11'
                 } ${
                   isActive 
-                    ? 'text-primary' 
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary/10 text-primary font-semibold shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 font-medium'
                 }`}
               >
-                {isActive && (
-                  <div className="absolute inset-0 bg-primary/10 dark:bg-primary/15 transition-all duration-300"></div>
-                )}
-                {/* Hover subtle background */}
-                {!isActive && (
-                  <div className="absolute inset-0 bg-muted/0 group-hover:bg-muted/50 transition-colors duration-300"></div>
-                )}
+                <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'text-primary scale-105' : 'group-hover:scale-110'} ${item.isAi && !isActive ? 'text-blue-500 dark:text-blue-400' : ''}`} />
                 
-                <Icon className={`w-5 h-5 flex-shrink-0 relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'} ${item.isAi ? 'text-purple-500 animate-pulse' : ''}`} />
-                <span className={`text-sm font-medium whitespace-nowrap relative z-10 transition-all duration-300 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 hidden'} ${item.isAi ? 'bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 bg-clip-text text-transparent font-bold' : ''}`}>
+                <span className={`text-sm whitespace-nowrap transition-all duration-300 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 hidden'}`}>
                   {item.name}
                 </span>
+
                 {item.isAi && isOpen && (
-                  <span className="ml-auto px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 relative z-10">
+                  <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" />
                     24/7
                   </span>
                 )}
+
                 {!item.isAi && isActive && isOpen && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--primary)] relative z-10 animate-pulse"></div>
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]"></div>
                 )}
               </Link>
             );
@@ -87,17 +85,21 @@ export function Sidebar({ isOpen }: SidebarProps) {
         </nav>
       </div>
       
+      {/* Footer Card */}
       {isOpen && (
-        <div className="p-4 mb-4">
-          <div className="bg-gradient-to-br from-muted/50 to-muted/10 border border-border/50 rounded-2xl p-4 backdrop-blur-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -mr-10 -mt-10 transition-opacity group-hover:opacity-100 opacity-50"></div>
-            <p className="text-sm font-bold text-foreground mb-1">Plano Premium</p>
-            <div className="w-full bg-background/50 rounded-full h-2 mb-2 overflow-hidden border border-border/20">
-              <div className="bg-gradient-to-r from-primary/80 to-primary h-full rounded-full relative" style={{ width: '70%' }}>
-                <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)] -translate-x-full animate-[shimmer_2s_infinite]"></div>
-              </div>
+        <div className="p-3.5 mb-3 mx-3">
+          <div className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-xl p-3.5 backdrop-blur-sm relative overflow-hidden transition-all duration-300 hover:border-primary/30">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-bold text-foreground tracking-tight">Plano Premium</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">PRO</span>
             </div>
-            <p className="text-xs font-medium text-muted-foreground">7.000 / 10.000 importações</p>
+            <div className="w-full bg-background/60 rounded-full h-1.5 mb-2 overflow-hidden border border-border/20">
+              <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: '70%' }}></div>
+            </div>
+            <p className="text-[11px] font-medium text-muted-foreground flex justify-between">
+              <span>Importações</span>
+              <span className="text-foreground font-semibold">7k / 10k</span>
+            </p>
           </div>
         </div>
       )}

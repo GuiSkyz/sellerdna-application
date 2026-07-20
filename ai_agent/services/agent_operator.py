@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from supabase import create_client, Client
@@ -195,49 +196,84 @@ class AgentOperatorService:
                 list_res = self.supabase.table("listings").select("product_id").execute()
                 existing_product_ids = {l["product_id"] for l in (list_res.data or []) if l.get("product_id")}
 
-                unlisted_products = [p for p in all_products if p["id"] not in existing_product_ids]
+                def _has_photo(p: Dict[str, Any]) -> bool:
+                    if isinstance(p.get("image_urls"), list) and len(p["image_urls"]) > 0:
+                        return True
+                    if isinstance(p.get("image_url"), str) and len(p["image_url"].strip()) > 0:
+                        return True
+                    if isinstance(p.get("images"), list) and len(p["images"]) > 0:
+                        return True
+                    return False
 
-                # Pega até target_count produtos
+                unlisted_products = [p for p in all_products if p["id"] not in existing_product_ids and _has_photo(p)]
+
+                # Pega até target_count produtos que possuem foto e ainda não têm anúncio
                 selected_products = unlisted_products[:target_count]
 
-                # Se não houver produtos não anunciados, pega os existentes para re-otimização ou simula se catálogo for vazio para teste
-                if len(selected_products) == 0 and len(all_products) > 0:
-                    selected_products = all_products[:min(target_count, 5)]
-
-                # Busca uma conta ativa do ML do usuário para vincular (se houver)
+                # Busca uma conta ativa do ML do usuário para vincular (ou conta virtual/rascunho)
                 acc_res = self.supabase.table("mercadolivre_accounts").select("id").eq("user_id", user_id).execute()
                 account_id = acc_res.data[0]["id"] if acc_res.data and len(acc_res.data) > 0 else None
+                if not account_id:
+                    v_res = self.supabase.table("mercadolivre_accounts").select("id").eq("user_id", user_id).eq("ml_user_id", "AI_DRAFT_ACCOUNT").execute()
+                    if v_res.data and len(v_res.data) > 0:
+                        account_id = v_res.data[0]["id"]
+                    else:
+                        try:
+                            ins_acc = self.supabase.table("mercadolivre_accounts").insert({
+                                "user_id": user_id,
+                                "ml_user_id": "AI_DRAFT_ACCOUNT",
+                                "nickname": "Loja Rascunho (Agente AI)",
+                                "status": "DRAFT"
+                            }).execute()
+                            if ins_acc.data:
+                                account_id = ins_acc.data[0]["id"]
+                        except Exception as acc_e:
+                            logger.warning(f"[AgentOperator] Erro ao criar conta de rascunho: {str(acc_e)}")
+                            account_id = str(uuid.uuid4())
 
                 for prod in selected_products:
                     try:
-                        # 1. Gera título otimizado via Gemini
+                        # 1. Gera título otimizado via Gemini / Groq
                         seo_title = await gemini_ai_service.generate_seo_title(prod)
                         
-                        # 2. Gera descrição persuasiva via Gemini
+                        # 2. Gera descrição persuasiva via Gemini / Groq
                         persuasive_desc = await gemini_ai_service.generate_persuasive_description(prod)
                         
-                        # 3. Cria registro de anúncio no banco (ou rascunho de IA para revisão)
-                        # Se tiver conta ML vinculada, podemos inserir na tabela public.listings com status de rascunho ou chamar API
-                        if account_id:
-                            new_listing_payload = {
-                                "account_id": account_id,
-                                "product_id": prod["id"],
-                                "ml_item_id": f"ML_AI_{int(time.time() * 1000)}_{created_count}",
-                                "title": seo_title,
-                                "price": float(prod.get("price") or 99.90),
-                                "available_quantity": int(prod.get("quantity") or 10),
-                                "status": "active" if auto_mode == "PUBLISH" else "draft",
-                                "permalink": f"https://produto.mercadolivre.com.br/MLB-AI-{created_count}",
-                                "attributes": {"description": persuasive_desc, "generated_by": "SELLER_DNA_AGENT"},
-                                "pictures": prod.get("image_urls") or []
-                            }
-                            ins = self.supabase.table("listings").insert(new_listing_payload).execute()
-                            if ins.data:
-                                created_listings.append(ins.data[0])
+                        # Monta imagens no formato aceito pelo sistema
+                        ml_pictures = []
+                        if isinstance(prod.get("image_urls"), list) and len(prod["image_urls"]) > 0:
+                            ml_pictures = [{"source": u} for u in prod["image_urls"]]
+                        elif isinstance(prod.get("image_url"), str) and len(prod["image_url"].strip()) > 0:
+                            ml_pictures = [{"source": prod["image_url"]}]
+                        elif isinstance(prod.get("images"), list) and len(prod["images"]) > 0:
+                            ml_pictures = [{"source": u if isinstance(u, str) else u.get("url") or u.get("source")} for u in prod["images"]]
+
+                        listing_id = str(uuid.uuid4())
+                        new_listing_payload = {
+                            "id": listing_id,
+                            "account_id": account_id,
+                            "product_id": prod["id"],
+                            "ml_item_id": f"ML_AI_{int(time.time() * 1000)}_{created_count + 1}",
+                            "title": seo_title[:60],
+                            "price": float(prod.get("price") or 99.90),
+                            "available_quantity": int(prod.get("quantity") or 10),
+                            "status": "active" if auto_mode == "PUBLISH" else "draft",
+                            "permalink": f"https://produto.mercadolivre.com.br/MLB-AI-{created_count + 1}",
+                            "attributes": [
+                                {"id": "BRAND", "value_name": prod.get("brand") or "Original"},
+                                {"id": "VOLUME", "value_name": prod.get("size_ml") or "100ml"}
+                            ],
+                            "pictures": ml_pictures,
+                            "created_at": datetime.now(timezone.utc).isoformat()
+                        }
+                        
+                        ins = self.supabase.table("listings").insert(new_listing_payload).execute()
+                        if ins.data:
+                            created_listings.append(ins.data[0])
                         
                         # Salva em ai_generations
                         self.supabase.table("ai_generations").insert({
-                            "listing_id": created_listings[-1]["id"] if created_listings else None,
+                            "listing_id": listing_id,
                             "prompt_type": "WEEKLY_AUTOMATION_SEO",
                             "generated_content": f"TÍTULO: {seo_title}\n\nDESCRIÇÃO:\n{persuasive_desc}",
                             "created_at": datetime.now(timezone.utc).isoformat()

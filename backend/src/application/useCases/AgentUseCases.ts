@@ -1,5 +1,6 @@
 import { supabase } from '../../infrastructure/database/supabase';
 import { GeminiService } from '../../infrastructure/integrations/gemini/GeminiService';
+import { randomUUID } from 'crypto';
 
 export class AgentUseCases {
   private geminiService = new GeminiService();
@@ -121,17 +122,89 @@ export class AgentUseCases {
     }
 
     // Execução Backend nativa
-    const { data: products } = await supabase.from('products').select('*').eq('user_id', userId).limit(targetCount);
+    const { data: allProducts } = await supabase.from('products').select('*').eq('user_id', userId);
+    const { data: existingListings } = await supabase.from('listings').select('product_id');
+    const existingIds = new Set((existingListings || []).map(l => l.product_id).filter(Boolean));
+
+    // REGRA CRÍTICA DO LOJISTA: Só pode fazer a criação dos anúncios de produtos que tiverem foto!
+    const unlistedWithPhotos = (allProducts || []).filter(p => {
+      if (existingIds.has(p.id)) return false;
+      const hasImageUrls = Array.isArray(p.image_urls) && p.image_urls.length > 0;
+      const hasImageUrl = typeof p.image_url === 'string' && p.image_url.trim() !== '';
+      const hasImages = Array.isArray(p.images) && p.images.length > 0;
+      return hasImageUrls || hasImageUrl || hasImages;
+    });
+
+    const selectedProducts = unlistedWithPhotos.slice(0, targetCount);
+
+    // Garante ou busca uma conta do ML (ou conta virtual/rascunho para vincular na tabela listings)
+    let { data: accounts } = await supabase.from('mercadolivre_accounts').select('id').eq('user_id', userId);
+    let accountId = accounts?.[0]?.id;
+    if (!accountId) {
+      const { data: virtualAcc } = await supabase.from('mercadolivre_accounts').select('id').eq('user_id', userId).eq('ml_user_id', 'AI_DRAFT_ACCOUNT').single();
+      if (virtualAcc) {
+        accountId = virtualAcc.id;
+      } else {
+        const { data: newAcc } = await supabase.from('mercadolivre_accounts').insert({
+          user_id: userId,
+          ml_user_id: 'AI_DRAFT_ACCOUNT',
+          nickname: 'Loja Rascunho (Agente AI)',
+          status: 'DRAFT'
+        }).select('id').single();
+        accountId = newAcc?.id || randomUUID();
+      }
+    }
+
     let createdCount = 0;
 
-    for (const prod of (products || [])) {
+    for (const prod of selectedProducts) {
       try {
         const title = await this.geminiService.generateOptimizedTitle(prod.name, prod.brand, prod.size_ml, prod.perfume_type);
-        // Pausa curta entre título e descrição para cadenciar requisições (anti-rate limit)
         await new Promise(r => setTimeout(r, 1500));
         const desc = await this.geminiService.generateDescription(prod);
-        createdCount++;
-        // Pausa de 3.5s após cada produto processado no lote para respeitar 15 RPM do Free Tier
+
+        // Monta imagens para o anúncio
+        const mlPictures: { source: string }[] = [];
+        if (Array.isArray(prod.image_urls) && prod.image_urls.length > 0) {
+          mlPictures.push(...prod.image_urls.map((u: any) => ({ source: typeof u === 'string' ? u : u.source || u.url })));
+        } else if (typeof prod.image_url === 'string' && prod.image_url.trim() !== '') {
+          mlPictures.push({ source: prod.image_url });
+        } else if (Array.isArray(prod.images) && prod.images.length > 0) {
+          mlPictures.push(...prod.images.map((u: any) => ({ source: typeof u === 'string' ? u : u.url || u.source })));
+        }
+
+        const listingId = randomUUID();
+        const listingPayload = {
+          id: listingId,
+          account_id: accountId,
+          product_id: prod.id,
+          ml_item_id: `ML_AI_${Date.now()}_${createdCount + 1}`,
+          title: title.substring(0, 60),
+          price: Number(prod.price) || 99.90,
+          available_quantity: Number(prod.quantity) || 10,
+          status: 'draft',
+          permalink: `https://produto.mercadolivre.com.br/MLB-AI-${createdCount + 1}`,
+          pictures: mlPictures,
+          attributes: [
+            { id: 'BRAND', value_name: prod.brand || 'Original' },
+            { id: 'VOLUME', value_name: prod.size_ml || '100ml' }
+          ],
+          created_at: new Date().toISOString()
+        };
+
+        const { error: insErr } = await supabase.from('listings').insert(listingPayload);
+        if (insErr) {
+          console.error(`[AgentUseCases] Erro ao salvar anúncio no banco para o produto ${prod.id}:`, insErr);
+        } else {
+          await supabase.from('ai_generations').insert({
+            listing_id: listingId,
+            prompt_type: 'WEEKLY_AUTOMATION_SEO',
+            generated_content: `TÍTULO: ${title}\n\nDESCRIÇÃO:\n${desc}`,
+            created_at: new Date().toISOString()
+          });
+          createdCount++;
+        }
+
         await new Promise(r => setTimeout(r, 3500));
       } catch (error: any) {
         console.warn(`[AgentUseCases] Falha na criação para o produto ${prod.id}:`, error?.message || error);
