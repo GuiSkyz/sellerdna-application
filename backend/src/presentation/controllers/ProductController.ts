@@ -107,7 +107,8 @@ export class ProductController {
       return reply.send(product);
     } catch (error) {
       request.log.error(error);
-      return reply.status(500).send({ error: 'Erro ao atualizar produto' });
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar produto';
+      return reply.status(500).send({ error: message });
     }
   }
 
@@ -125,7 +126,8 @@ export class ProductController {
       return reply.status(201).send(product);
     } catch (error) {
       request.log.error(error);
-      return reply.status(500).send({ error: 'Erro ao criar produto' });
+      const message = error instanceof Error ? error.message : 'Erro ao criar produto';
+      return reply.status(500).send({ error: message });
     }
   }
 

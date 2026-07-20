@@ -96,7 +96,7 @@ export class SupabaseProductRepository {
 
     if (error) {
       console.error('Erro ao salvar produtos no Supabase:', error);
-      throw new Error('Falha ao salvar produtos no banco de dados.');
+      throw new Error(`Falha ao salvar produtos no banco de dados: ${error.message || JSON.stringify(error)}`);
     }
   }
 
@@ -220,15 +220,26 @@ export class SupabaseProductRepository {
     if (updateData.customId !== undefined) mapToSnakeCase.custom_id = updateData.customId;
     if (updateData.shippingMode !== undefined) mapToSnakeCase.shipping_mode = updateData.shippingMode;
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('products')
       .update(mapToSnakeCase)
       .eq('id', id)
       .eq('user_id', userId);
 
+    if (error && (error.code === '42703' || (error.message && error.message.includes('shipping_mode'))) && mapToSnakeCase.shipping_mode !== undefined) {
+      console.warn('A coluna shipping_mode não existe no banco. Retentando atualização sem ela...');
+      delete mapToSnakeCase.shipping_mode;
+      const retry = await supabase
+        .from('products')
+        .update(mapToSnakeCase)
+        .eq('id', id)
+        .eq('user_id', userId);
+      error = retry.error;
+    }
+
     if (error) {
       console.error('Erro ao atualizar produto no Supabase:', error);
-      throw new Error('Falha ao atualizar produto no banco de dados.');
+      throw new Error(`Falha ao atualizar produto no banco de dados: ${error.message || JSON.stringify(error)}`);
     }
 
     return this.getById(id, userId);
@@ -283,7 +294,7 @@ export class SupabaseProductRepository {
 
     if (error) {
       console.error('Erro ao atualizar produtos em massa no Supabase:', error);
-      throw new Error('Falha ao atualizar produtos em massa no banco de dados.');
+      throw new Error(`Falha ao atualizar produtos em massa no banco de dados: ${error.message || JSON.stringify(error)}`);
     }
   }
 
@@ -351,7 +362,7 @@ export class SupabaseProductRepository {
 
     if (error || !data) {
       console.error('Erro ao criar produto no Supabase:', error);
-      throw new Error('Falha ao criar produto no banco de dados.');
+      throw new Error(`Falha ao criar produto no banco de dados: ${error?.message || 'Erro desconhecido'}`);
     }
 
     return {
